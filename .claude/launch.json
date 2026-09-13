@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "berth ui",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dist/berth.js", "ui", "--port", "10000"],
+      "port": 10000
+    }
+  ]
+}

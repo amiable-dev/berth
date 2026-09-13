@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: berth
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+type: software
+authors:
+  - name: Amiable Dev
+    alias: amiable-dev
+    email: chris@amiable.dev
+repository-code: https://github.com/amiable-dev/berth
+url: https://github.com/amiable-dev/berth
+abstract: >-
+  Advisory port registry, reconciler and dashboard for concurrent agent
+  sessions on one machine. A decodable port scheme, a daemonless lease ledger,
+  a reconciler that attributes live listeners to projects, worktrees, Docker
+  containers and Claude Code sessions, a CLI with a --json boundary, and a
+  local dashboard with a port-range map.
+keywords:
+  - ports
+  - dev-server
+  - claude-code
+  - agents
+  - registry
+  - localhost
+  - developer-tools
+license: MIT
+version: 0.1.0
+date-released: 2026-09-13

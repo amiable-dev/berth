@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>berth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body data-theme="dark">
+<div class="app">
+  <header class="hdr">
+    <div class="brand">
+      <span class="wordmark">berth</span>
+      <span class="bound" id="bound">ui :10000</span>
+      <span class="fixture-tag" id="fixtureTag" title="Data is ./fixtures/check.sample.json, not a live berth check" hidden>fixture</span>
+    </div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="views"></div>
+    <div class="spacer"></div>
+    <input class="search" id="search" type="text" placeholder="search port, project, pid…" aria-label="search port, project, pid" autocomplete="off" spellcheck="false">
+    <div class="ctl">
+      <span class="dot on" id="dot"></span>
+      <span class="ago" id="ago">0s ago</span>
+      <button class="btn poll on" id="pollBtn" type="button" title="Poll berth check --json every 5 s" aria-pressed="true">poll on</button>
+      <button class="btn" id="refreshBtn" type="button" title="Re-fetch berth check --json now">refresh</button>
+      <button class="btn btn-icon" id="themeBtn" type="button" aria-label="toggle light or dark theme">☾</button>
+    </div>
+  </header>
+  <div class="filters" id="filters"></div>
+  <div class="body">
+    <main class="main" id="main"></main>
+    <aside class="drawer" id="drawer" aria-label="port details" hidden></aside>
+  </div>
+</div>
+<div class="tip" id="tip" aria-hidden="true" hidden></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

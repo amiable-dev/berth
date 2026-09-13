@@ -1,0 +1,1702 @@
+{
+  "version": "0.1.0",
+  "generatedAt": "2026-09-13T08:47:12.000Z",
+  "cacheAgeMs": 412,
+  "host": {
+    "platform": "darwin",
+    "user": "amiable-dev",
+    "dockerAvailable": true,
+    "colima": true
+  },
+  "policy": {
+    "scheme": {
+      "base": 10000,
+      "projectMax": 29,
+      "worktreeMax": 9,
+      "roles": {
+        "web": 0,
+        "api": 1,
+        "db": 2,
+        "cache": 3,
+        "smtp": 4,
+        "mail-ui": 5,
+        "docs": 6,
+        "worker": 7,
+        "otlp-grpc": 8,
+        "otlp-http": 9
+      }
+    },
+    "pools": {
+      "dynamic": [
+        40000,
+        41999
+      ],
+      "ttlHours": 8
+    },
+    "reserved": {
+      "ranges": [
+        [
+          0,
+          1023
+        ],
+        [
+          4000,
+          4999
+        ],
+        [
+          49152,
+          65535
+        ]
+      ],
+      "ports": [
+        5000,
+        7000
+      ],
+      "lint": [
+        11211,
+        11434,
+        15672,
+        16686,
+        19999,
+        27017
+      ]
+    },
+    "shared": {
+      "observability": {
+        "owner": "skills-telemetry",
+        "ports": {
+          "grafana": 3000,
+          "langfuse": 3001,
+          "tempo": 3200,
+          "otlp-grpc": 4317,
+          "otlp-http": 4318,
+          "metrics": 8888,
+          "prometheus": 9090
+        },
+        "note": "One stack for every project. breach-resolve, standards-telemetry and llm-council carry duplicates that should point here instead."
+      }
+    },
+    "projects": [
+      {
+        "name": "berth",
+        "P": 0,
+        "path": "~/port-visualiser",
+        "base": 10000,
+        "declared": [],
+        "extras": {},
+        "note": "The registry itself. Dashboard on 10000."
+      },
+      {
+        "name": "skills-telemetry",
+        "P": 1,
+        "path": "~/projects/amiable/skills-telemetry",
+        "base": 11000,
+        "declared": [
+          5432
+        ],
+        "extras": {}
+      },
+      {
+        "name": "36-inch-platform",
+        "P": 2,
+        "path": "~/projects/36-inch-penguin/36-inch-platform",
+        "base": 12000,
+        "declared": [
+          3001,
+          5433,
+          1025,
+          8025
+        ],
+        "extras": {}
+      },
+      {
+        "name": "breach-resolve",
+        "P": 3,
+        "path": "~/projects/amiable/breach-resolve",
+        "base": 13000,
+        "declared": [
+          3000,
+          8000,
+          8001,
+          8002,
+          8003,
+          8004,
+          8005,
+          8080,
+          5432,
+          6379,
+          9200,
+          16686
+        ],
+        "extras": {
+          "gateway": 10,
+          "auth": 11,
+          "incidents": 12,
+          "playbooks": 13,
+          "integrations": 14,
+          "notifications": 15,
+          "analytics": 16,
+          "scheduler": 17,
+          "audit": 18,
+          "search": 19
+        }
+      },
+      {
+        "name": "cith-watch",
+        "P": 4,
+        "path": "~/projects/amiable/cith-watch",
+        "base": 14000,
+        "declared": [
+          5173,
+          8787,
+          5439,
+          6380
+        ],
+        "extras": {}
+      },
+      {
+        "name": "sightline",
+        "P": 5,
+        "path": "~/projects/monstrous/sightline",
+        "base": 15000,
+        "declared": [
+          5173,
+          8787
+        ],
+        "extras": {}
+      },
+      {
+        "name": "llm-council",
+        "P": 6,
+        "path": "~/projects/amiable/llm-council",
+        "base": 16000,
+        "declared": [
+          8000
+        ],
+        "extras": {}
+      },
+      {
+        "name": "chancery",
+        "P": 7,
+        "path": "~/projects/amiable/chancery",
+        "base": 17000,
+        "declared": [],
+        "extras": {}
+      },
+      {
+        "name": "learnlock-studio",
+        "P": 8,
+        "path": "~/projects/amiable/learnlock-studio",
+        "base": 18000,
+        "declared": [
+          5432
+        ],
+        "extras": {}
+      },
+      {
+        "name": "learnlock",
+        "P": 9,
+        "path": "~/projects/amiable/learnlock",
+        "base": 19000,
+        "declared": [],
+        "extras": {}
+      },
+      {
+        "name": "conductor",
+        "P": 10,
+        "path": "~/projects/amiable/conductor",
+        "base": 20000,
+        "declared": [
+          5173
+        ],
+        "extras": {}
+      },
+      {
+        "name": "monstrous-conductor",
+        "P": 11,
+        "path": "~/projects/monstrous/conductor",
+        "base": 21000,
+        "declared": [
+          5173
+        ],
+        "extras": {}
+      },
+      {
+        "name": "standards-telemetry",
+        "P": 12,
+        "path": "~/projects/amiable/standards-telemetry",
+        "base": 22000,
+        "declared": [
+          5432
+        ],
+        "extras": {}
+      },
+      {
+        "name": "swe-ai-ml-kb",
+        "P": 13,
+        "path": "~/projects/amiable/swe-ai-ml-kb",
+        "base": 23000,
+        "declared": [],
+        "extras": {}
+      },
+      {
+        "name": "docusaurus-plugin-stentorosaur",
+        "P": 14,
+        "path": "~/projects/amiable/docusaurus-plugin-stentorosaur",
+        "base": 24000,
+        "declared": [
+          3000
+        ],
+        "extras": {}
+      },
+      {
+        "name": "amiable-docusaurus",
+        "P": 15,
+        "path": "~/projects/amiable/amiable-docusaurus",
+        "base": 25000,
+        "declared": [
+          3000
+        ],
+        "extras": {}
+      },
+      {
+        "name": "monstrous-media",
+        "P": 16,
+        "path": "~/projects/monstrous/monstrous-media",
+        "base": 26000,
+        "declared": [
+          3000
+        ],
+        "extras": {}
+      },
+      {
+        "name": "conductor-website",
+        "P": 17,
+        "path": "~/projects/monstrous/conductor-website",
+        "base": 27000,
+        "declared": [
+          3000
+        ],
+        "extras": {}
+      },
+      {
+        "name": "heptara",
+        "P": 18,
+        "path": "~/projects/heptara/heptara",
+        "base": 28000,
+        "declared": [],
+        "extras": {}
+      },
+      {
+        "name": "sre-agent",
+        "P": 19,
+        "path": "~/projects/amiable/sre-agent",
+        "base": 29000,
+        "declared": [],
+        "extras": {}
+      },
+      {
+        "name": "kpm",
+        "P": 20,
+        "path": "~/projects/amiable/kpm",
+        "base": 30000,
+        "declared": [
+          8091
+        ],
+        "extras": {}
+      }
+    ]
+  },
+  "ports": [
+    {
+      "port": 3000,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "grafana",
+      "kind": "shared",
+      "decoded": null,
+      "lease": {
+        "port": 3000,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "grafana",
+        "kind": "shared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-grafana-1",
+        "pid": 503,
+        "container": "skills-telemetry-grafana-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container skills-telemetry-grafana-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)",
+        "policy: shared.observability grafana=3000 owner skills-telemetry"
+      ],
+      "advisory": null,
+      "url": "http://localhost:3000",
+      "age": "1h 06m"
+    },
+    {
+      "port": 3001,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "langfuse",
+      "kind": "shared",
+      "decoded": null,
+      "lease": {
+        "port": 3001,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "langfuse",
+        "kind": "shared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-langfuse-1",
+        "pid": 503,
+        "container": "skills-telemetry-langfuse-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container skills-telemetry-langfuse-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)",
+        "policy: shared.observability langfuse=3001 owner skills-telemetry"
+      ],
+      "advisory": null,
+      "url": "http://localhost:3001",
+      "age": "1h 06m"
+    },
+    {
+      "port": 3200,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "tempo",
+      "kind": "shared",
+      "decoded": null,
+      "lease": {
+        "port": 3200,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "tempo",
+        "kind": "shared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-tempo-1",
+        "pid": 503,
+        "container": "skills-telemetry-tempo-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container skills-telemetry-tempo-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)",
+        "policy: shared.observability tempo=3200 owner skills-telemetry"
+      ],
+      "advisory": null,
+      "age": "1h 06m"
+    },
+    {
+      "port": 4317,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "otlp-grpc",
+      "kind": "shared",
+      "decoded": null,
+      "lease": {
+        "port": 4317,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "otlp-grpc",
+        "kind": "shared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-otel-1",
+        "pid": 503,
+        "container": "skills-telemetry-otel-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container skills-telemetry-otel-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)",
+        "policy: shared.observability otlp-grpc=4317 owner skills-telemetry"
+      ],
+      "advisory": null,
+      "age": "1h 06m"
+    },
+    {
+      "port": 4318,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "otlp-http",
+      "kind": "shared",
+      "decoded": null,
+      "lease": {
+        "port": 4318,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "otlp-http",
+        "kind": "shared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-otel-1",
+        "pid": 503,
+        "container": "skills-telemetry-otel-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container skills-telemetry-otel-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)",
+        "policy: shared.observability otlp-http=4318 owner skills-telemetry"
+      ],
+      "advisory": null,
+      "age": "1h 06m"
+    },
+    {
+      "port": 8888,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "metrics",
+      "kind": "shared",
+      "decoded": null,
+      "lease": {
+        "port": 8888,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "metrics",
+        "kind": "shared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-otel-1",
+        "pid": 503,
+        "container": "skills-telemetry-otel-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container skills-telemetry-otel-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)",
+        "policy: shared.observability metrics=8888 owner skills-telemetry"
+      ],
+      "advisory": null,
+      "age": "1h 06m"
+    },
+    {
+      "port": 9090,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "prometheus",
+      "kind": "shared",
+      "decoded": null,
+      "lease": {
+        "port": 9090,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "prometheus",
+        "kind": "shared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-prometheus-1",
+        "pid": 503,
+        "container": "skills-telemetry-prometheus-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container skills-telemetry-prometheus-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)",
+        "policy: shared.observability prometheus=9090 owner skills-telemetry"
+      ],
+      "advisory": null,
+      "url": "http://localhost:9090",
+      "age": "1h 06m"
+    },
+    {
+      "port": 5432,
+      "state": "ok",
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "role": "db",
+      "kind": "declared",
+      "decoded": null,
+      "lease": {
+        "port": 5432,
+        "project": "skills-telemetry",
+        "worktree": 0,
+        "role": "db",
+        "kind": "declared",
+        "owner": {
+          "session_id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+          "tool": "claude-code",
+          "pid": 3120,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "created": "2026-09-13T07:41:12.000Z"
+      },
+      "live": {
+        "holder": "container skills-telemetry-postgres-1",
+        "pid": 503,
+        "container": "skills-telemetry-postgres-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "proxy": true
+      },
+      "evidence": [
+        "policy: declared by skills-telemetry",
+        "docker: container skills-telemetry-postgres-1 label working_dir=/Users/amiable-dev/projects/amiable/skills-telemetry",
+        "lsof: ssh pid 503 (Colima proxy, ignored as owner)"
+      ],
+      "advisory": null,
+      "age": "1h 06m"
+    },
+    {
+      "port": 5433,
+      "state": "unmanaged",
+      "project": "36-inch-platform",
+      "worktree": 0,
+      "role": "db",
+      "kind": "declared",
+      "decoded": null,
+      "lease": null,
+      "live": {
+        "holder": "container penguin-platform-db",
+        "pid": 503,
+        "container": "penguin-platform-db",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container penguin-platform-db has no compose labels (docker run)",
+        "policy: declared by 36-inch-platform; no lease, no session marker"
+      ],
+      "advisory": {
+        "text": "Bound inside a managed range with no lease and no session marker.",
+        "command": "berth adopt 5433 --owner human"
+      },
+      "age": "3h 12m"
+    },
+    {
+      "port": 1025,
+      "state": "unmanaged",
+      "project": "36-inch-platform",
+      "worktree": 0,
+      "role": "smtp",
+      "kind": "declared",
+      "decoded": null,
+      "lease": null,
+      "live": {
+        "holder": "container penguin-mailpit",
+        "pid": 503,
+        "container": "penguin-mailpit",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container penguin-mailpit has no compose labels (docker run)",
+        "policy: declared by 36-inch-platform; no lease, no session marker"
+      ],
+      "advisory": {
+        "text": "Bound inside a managed range with no lease and no session marker.",
+        "command": "berth adopt 1025 --owner human"
+      },
+      "age": "3h 12m"
+    },
+    {
+      "port": 8025,
+      "state": "unmanaged",
+      "project": "36-inch-platform",
+      "worktree": 0,
+      "role": "mail-ui",
+      "kind": "declared",
+      "decoded": null,
+      "lease": null,
+      "live": {
+        "holder": "container penguin-mailpit",
+        "pid": 503,
+        "container": "penguin-mailpit",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container penguin-mailpit has no compose labels (docker run)",
+        "policy: declared by 36-inch-platform; no lease, no session marker"
+      ],
+      "advisory": {
+        "text": "Bound inside a managed range with no lease and no session marker.",
+        "command": "berth adopt 8025 --owner human"
+      },
+      "url": "http://localhost:8025",
+      "age": "3h 12m"
+    },
+    {
+      "port": 5439,
+      "state": "ok",
+      "project": "cith-watch",
+      "worktree": 0,
+      "role": "db",
+      "kind": "declared",
+      "decoded": null,
+      "lease": {
+        "port": 5439,
+        "project": "cith-watch",
+        "worktree": 0,
+        "role": "db",
+        "kind": "declared",
+        "owner": {
+          "tool": "human"
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/cith-watch",
+        "created": "2026-09-11T04:47:12.000Z"
+      },
+      "live": {
+        "holder": "container cith-watch-postgres-1",
+        "pid": 503,
+        "container": "cith-watch-postgres-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/cith-watch",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container cith-watch-postgres-1 label working_dir=/Users/amiable-dev/projects/amiable/cith-watch",
+        "policy: declared by cith-watch"
+      ],
+      "advisory": null,
+      "age": "2d 4h"
+    },
+    {
+      "port": 6380,
+      "state": "ok",
+      "project": "cith-watch",
+      "worktree": 0,
+      "role": "cache",
+      "kind": "declared",
+      "decoded": null,
+      "lease": {
+        "port": 6380,
+        "project": "cith-watch",
+        "worktree": 0,
+        "role": "cache",
+        "kind": "declared",
+        "owner": {
+          "tool": "human"
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/cith-watch",
+        "created": "2026-09-11T04:47:12.000Z"
+      },
+      "live": {
+        "holder": "container cith-watch-redis-1",
+        "pid": 503,
+        "container": "cith-watch-redis-1",
+        "cwd": "/Users/amiable-dev/projects/amiable/cith-watch",
+        "proxy": true
+      },
+      "evidence": [
+        "docker: container cith-watch-redis-1 label working_dir=/Users/amiable-dev/projects/amiable/cith-watch",
+        "policy: declared by cith-watch"
+      ],
+      "advisory": null,
+      "age": "2d 4h"
+    },
+    {
+      "port": 5000,
+      "state": "unmanaged",
+      "decoded": null,
+      "lease": null,
+      "live": {
+        "holder": "ControlCenter",
+        "pid": 412,
+        "tool": "macos"
+      },
+      "evidence": [
+        "netstat -anv: root listener ControlCenter pid 412 (lsof cannot see it)",
+        "policy: reserved.ports 5000 (macOS AirPlay receiver)"
+      ],
+      "advisory": {
+        "text": "Bound inside a managed range with no lease and no session marker.",
+        "command": "berth adopt 5000 --owner human"
+      }
+    },
+    {
+      "port": 7000,
+      "state": "unmanaged",
+      "decoded": null,
+      "lease": null,
+      "live": {
+        "holder": "ControlCenter",
+        "pid": 412,
+        "tool": "macos"
+      },
+      "evidence": [
+        "netstat -anv: root listener ControlCenter pid 412 (lsof cannot see it)",
+        "policy: reserved.ports 7000 (macOS AirPlay receiver)"
+      ],
+      "advisory": {
+        "text": "Bound inside a managed range with no lease and no session marker.",
+        "command": "berth adopt 7000 --owner human"
+      }
+    },
+    {
+      "port": 10000,
+      "state": "ok",
+      "project": "berth",
+      "worktree": 0,
+      "role": "web",
+      "kind": "block",
+      "decoded": {
+        "P": 0,
+        "W": 0,
+        "R": 0
+      },
+      "lease": {
+        "port": 10000,
+        "project": "berth",
+        "worktree": 0,
+        "role": "web",
+        "kind": "block",
+        "owner": {
+          "tool": "human",
+          "pid": 9001
+        },
+        "cwd": "/Users/amiable-dev/port-visualiser",
+        "note": "berth ui registers itself on start",
+        "created": "2026-09-13T08:43:12.000Z"
+      },
+      "live": {
+        "holder": "node 9001 (berth ui)",
+        "pid": 9001,
+        "cwd": "/Users/amiable-dev/port-visualiser"
+      },
+      "evidence": [
+        "lsof: node pid 9001 cwd /Users/amiable-dev/port-visualiser",
+        "leases.json: berth ui registers itself on start"
+      ],
+      "advisory": null,
+      "url": "http://localhost:10000",
+      "age": "0h 04m"
+    },
+    {
+      "port": 17000,
+      "state": "ok",
+      "project": "chancery",
+      "worktree": 0,
+      "role": "web",
+      "kind": "block",
+      "decoded": {
+        "P": 7,
+        "W": 0,
+        "R": 0
+      },
+      "lease": {
+        "port": 17000,
+        "project": "chancery",
+        "worktree": 0,
+        "role": "web",
+        "kind": "block",
+        "owner": {
+          "session_id": "7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410",
+          "tool": "claude-code",
+          "pid": 5588,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery",
+        "created": "2026-09-13T08:16:12.000Z"
+      },
+      "live": {
+        "holder": "node 5610 (next dev)",
+        "pid": 5610,
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery",
+        "sessionId": "7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "claims/7d2f91bc.json: block · chancery · W0 · web",
+        "ps -E: pid 5610 CLAUDE_CODE_SESSION_ID=7d2f91bc…",
+        "lsof: node pid 5610 cwd /Users/amiable-dev/projects/amiable/chancery"
+      ],
+      "advisory": null,
+      "url": "http://localhost:17000",
+      "age": "0h 31m"
+    },
+    {
+      "port": 17001,
+      "state": "ok",
+      "project": "chancery",
+      "worktree": 0,
+      "role": "api",
+      "kind": "block",
+      "decoded": {
+        "P": 7,
+        "W": 0,
+        "R": 1
+      },
+      "lease": {
+        "port": 17001,
+        "project": "chancery",
+        "worktree": 0,
+        "role": "api",
+        "kind": "block",
+        "owner": {
+          "session_id": "7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410",
+          "tool": "claude-code",
+          "pid": 5588,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery",
+        "created": "2026-09-13T08:17:12.000Z"
+      },
+      "live": {
+        "holder": "node 5623 (tsx watch)",
+        "pid": 5623,
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery",
+        "sessionId": "7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "claims/7d2f91bc.json: block · chancery · W0 · api",
+        "ps -E: pid 5623 CLAUDE_CODE_SESSION_ID=7d2f91bc…",
+        "lsof: node pid 5623 cwd /Users/amiable-dev/projects/amiable/chancery"
+      ],
+      "advisory": null,
+      "url": "http://localhost:17001",
+      "age": "0h 30m"
+    },
+    {
+      "port": 17002,
+      "state": "idle",
+      "project": "chancery",
+      "worktree": 0,
+      "role": "db",
+      "kind": "block",
+      "decoded": {
+        "P": 7,
+        "W": 0,
+        "R": 2
+      },
+      "lease": {
+        "port": 17002,
+        "project": "chancery",
+        "worktree": 0,
+        "role": "db",
+        "kind": "block",
+        "owner": {
+          "session_id": "7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410",
+          "tool": "claude-code",
+          "pid": 5588,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery",
+        "created": "2026-09-13T08:16:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "claims/7d2f91bc.json: block · chancery · W0 · db",
+        "lsof: nothing bound on 17002",
+        "ps: owner pid 5588 alive (start time matches)"
+      ],
+      "advisory": null,
+      "age": "0h 31m"
+    },
+    {
+      "port": 17100,
+      "state": "ok",
+      "project": "chancery",
+      "worktree": 1,
+      "role": "web",
+      "kind": "block",
+      "decoded": {
+        "P": 7,
+        "W": 1,
+        "R": 0
+      },
+      "lease": {
+        "port": 17100,
+        "project": "chancery",
+        "worktree": 1,
+        "role": "web",
+        "kind": "block",
+        "owner": {
+          "session_id": "e91a4c07-58d2-47f3-b1c6-9e0a3d2f7b18",
+          "tool": "claude-code",
+          "pid": 6102,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery/.claude/worktrees/feat-ledger",
+        "created": "2026-09-13T08:32:12.000Z"
+      },
+      "live": {
+        "holder": "node 6140 (next dev)",
+        "pid": 6140,
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery/.claude/worktrees/feat-ledger",
+        "sessionId": "e91a4c07-58d2-47f3-b1c6-9e0a3d2f7b18",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "claims/e91a4c07.json: block · chancery · W1 · web",
+        "ps -E: pid 6140 CLAUDE_CODE_SESSION_ID=e91a4c07…",
+        "lsof: node pid 6140 cwd /Users/amiable-dev/projects/amiable/chancery/.claude/worktrees/feat-ledger"
+      ],
+      "advisory": null,
+      "url": "http://localhost:17100",
+      "age": "0h 15m"
+    },
+    {
+      "port": 17101,
+      "state": "conflict",
+      "project": "chancery",
+      "worktree": 1,
+      "role": "api",
+      "kind": "block",
+      "decoded": {
+        "P": 7,
+        "W": 1,
+        "R": 1
+      },
+      "lease": {
+        "port": 17101,
+        "project": "chancery",
+        "worktree": 1,
+        "role": "api",
+        "kind": "block",
+        "owner": {
+          "session_id": "e91a4c07-58d2-47f3-b1c6-9e0a3d2f7b18",
+          "tool": "claude-code",
+          "pid": 6102,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery/.claude/worktrees/feat-ledger",
+        "created": "2026-09-13T08:35:12.000Z"
+      },
+      "live": {
+        "holder": "node 5623 (tsx watch)",
+        "pid": 5623,
+        "cwd": "/Users/amiable-dev/projects/amiable/chancery",
+        "sessionId": "7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "claims/e91a4c07.json: block · chancery · W1 · api (lease owner e91a4c07)",
+        "lsof: node pid 5623 cwd /Users/amiable-dev/projects/amiable/chancery",
+        "ps -E: pid 5623 CLAUDE_CODE_SESSION_ID=7d2f91bc… (W0 session, not the lease owner)",
+        "lsof: pid 5623 also holds 17001; it bound both API_PORT values"
+      ],
+      "advisory": {
+        "text": "Lease owner differs from the live holder. Tell the owning session its belief is wrong.",
+        "command": "berth who 17101 --json"
+      },
+      "url": "http://localhost:17101",
+      "age": "0h 12m"
+    },
+    {
+      "port": 16001,
+      "state": "ok",
+      "project": "llm-council",
+      "worktree": 0,
+      "role": "api",
+      "kind": "block",
+      "decoded": {
+        "P": 6,
+        "W": 0,
+        "R": 1
+      },
+      "lease": {
+        "port": 16001,
+        "project": "llm-council",
+        "worktree": 0,
+        "role": "api",
+        "kind": "block",
+        "owner": {
+          "session_id": "2b8dd4f5-c3a1-4d67-a0f2-7e5b8c9d1a34",
+          "tool": "claude-code",
+          "pid": 4477,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/llm-council",
+        "created": "2026-09-13T08:00:12.000Z"
+      },
+      "live": {
+        "holder": "uvicorn 4490",
+        "pid": 4490,
+        "cwd": "/Users/amiable-dev/projects/amiable/llm-council",
+        "sessionId": "2b8dd4f5-c3a1-4d67-a0f2-7e5b8c9d1a34",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "claims/2b8dd4f5.json: block · llm-council · W0 · api",
+        "ps -E: pid 4490 CLAUDE_CODE_SESSION_ID=2b8dd4f5…",
+        "lsof: python pid 4490 cwd /Users/amiable-dev/projects/amiable/llm-council"
+      ],
+      "advisory": null,
+      "url": "http://localhost:16001",
+      "age": "0h 47m"
+    },
+    {
+      "port": 8000,
+      "state": "idle",
+      "project": "llm-council",
+      "worktree": 0,
+      "role": "api",
+      "kind": "declared",
+      "decoded": null,
+      "lease": {
+        "port": 8000,
+        "project": "llm-council",
+        "worktree": 0,
+        "role": "api",
+        "kind": "declared",
+        "owner": {
+          "session_id": "2b8dd4f5-c3a1-4d67-a0f2-7e5b8c9d1a34",
+          "tool": "claude-code",
+          "pid": 4477,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/llm-council",
+        "created": "2026-09-13T08:00:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "policy: declared by llm-council (and breach-resolve)",
+        "lsof: nothing bound on 8000; service migrated to 16001"
+      ],
+      "advisory": null,
+      "age": "0h 47m"
+    },
+    {
+      "port": 40012,
+      "state": "ok",
+      "project": "llm-council",
+      "worktree": 0,
+      "role": "dynamic",
+      "kind": "dynamic",
+      "decoded": null,
+      "lease": {
+        "port": 40012,
+        "project": "llm-council",
+        "worktree": 0,
+        "role": "dynamic",
+        "kind": "dynamic",
+        "owner": {
+          "session_id": "2b8dd4f5-c3a1-4d67-a0f2-7e5b8c9d1a34",
+          "tool": "claude-code",
+          "pid": 4477,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/llm-council",
+        "expires": "2026-09-13T16:25:12.000Z",
+        "note": "--dynamic 1",
+        "created": "2026-09-13T08:25:12.000Z"
+      },
+      "live": {
+        "holder": "python 4533 (http.server)",
+        "pid": 4533,
+        "cwd": "/Users/amiable-dev/projects/amiable/llm-council",
+        "sessionId": "2b8dd4f5-c3a1-4d67-a0f2-7e5b8c9d1a34",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "claims/2b8dd4f5.json: dynamic · llm-council · --dynamic 1",
+        "ps -E: pid 4533 CLAUDE_CODE_SESSION_ID=2b8dd4f5…",
+        "lsof: python pid 4533 cwd /Users/amiable-dev/projects/amiable/llm-council"
+      ],
+      "advisory": null,
+      "url": "http://localhost:40012",
+      "age": "0h 22m"
+    },
+    {
+      "port": 15000,
+      "state": "idle",
+      "project": "sightline",
+      "worktree": 0,
+      "role": "web",
+      "kind": "block",
+      "decoded": {
+        "P": 5,
+        "W": 0,
+        "R": 0
+      },
+      "lease": {
+        "port": 15000,
+        "project": "sightline",
+        "worktree": 0,
+        "role": "web",
+        "kind": "block",
+        "owner": {
+          "session_id": "38c7f0de-1b9a-4e2c-9d73-4f6a8b0c5e21",
+          "tool": "claude-code",
+          "pid": 8812,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/monstrous/sightline",
+        "created": "2026-09-13T08:40:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "claims/38c7f0de.json: block · sightline · W0 · web",
+        "lsof: nothing bound on 15000; owner pid 8812 alive and listening on 14000 instead"
+      ],
+      "advisory": null,
+      "age": "0h 07m"
+    },
+    {
+      "port": 15001,
+      "state": "ok",
+      "project": "sightline",
+      "worktree": 0,
+      "role": "api",
+      "kind": "block",
+      "decoded": {
+        "P": 5,
+        "W": 0,
+        "R": 1
+      },
+      "lease": {
+        "port": 15001,
+        "project": "sightline",
+        "worktree": 0,
+        "role": "api",
+        "kind": "block",
+        "owner": {
+          "session_id": "38c7f0de-1b9a-4e2c-9d73-4f6a8b0c5e21",
+          "tool": "claude-code",
+          "pid": 8812,
+          "pid_start": 1789282800
+        },
+        "cwd": "/Users/amiable-dev/projects/monstrous/sightline",
+        "created": "2026-09-13T08:41:12.000Z"
+      },
+      "live": {
+        "holder": "workerd 8845 (wrangler dev)",
+        "pid": 8845,
+        "cwd": "/Users/amiable-dev/projects/monstrous/sightline",
+        "sessionId": "38c7f0de-1b9a-4e2c-9d73-4f6a8b0c5e21",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "claims/38c7f0de.json: block · sightline · W0 · api",
+        "ps -E: pid 8845 CLAUDE_CODE_SESSION_ID=38c7f0de…",
+        "lsof: workerd pid 8845 cwd /Users/amiable-dev/projects/monstrous/sightline"
+      ],
+      "advisory": null,
+      "url": "http://localhost:15001",
+      "age": "0h 06m"
+    },
+    {
+      "port": 14000,
+      "state": "squatter",
+      "project": "cith-watch",
+      "worktree": 0,
+      "role": "web",
+      "kind": "block",
+      "decoded": {
+        "P": 4,
+        "W": 0,
+        "R": 0
+      },
+      "lease": null,
+      "live": {
+        "holder": "node 8812 (vite)",
+        "pid": 8812,
+        "cwd": "/Users/amiable-dev/projects/monstrous/sightline",
+        "sessionId": "38c7f0de-1b9a-4e2c-9d73-4f6a8b0c5e21",
+        "tool": "claude-code"
+      },
+      "evidence": [
+        "policy: 14000 is inside the cith-watch block (P=4); no cith-watch lease",
+        "ps -E: pid 8812 CLAUDE_CODE_SESSION_ID=38c7f0de… (sightline session)",
+        "lsof: node pid 8812 cwd /Users/amiable-dev/projects/monstrous/sightline (vite --port 14000 instead of 15000)"
+      ],
+      "advisory": {
+        "text": "A different session bound a port inside another project’s block. Name the holder and the block owner; do not kill.",
+        "command": "berth who 14000"
+      },
+      "url": "http://localhost:14000",
+      "age": "0h 07m"
+    },
+    {
+      "port": 13000,
+      "state": "stale",
+      "project": "breach-resolve",
+      "worktree": 0,
+      "role": "web",
+      "kind": "block",
+      "decoded": {
+        "P": 3,
+        "W": 0,
+        "R": 0
+      },
+      "lease": {
+        "port": 13000,
+        "project": "breach-resolve",
+        "worktree": 0,
+        "role": "web",
+        "kind": "block",
+        "owner": {
+          "session_id": "5fa0c3d1-7e2b-4f90-b8a4-1c3d5e7f9a02",
+          "tool": "claude-code",
+          "pid": 2210,
+          "pid_start": 1789279920
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/breach-resolve",
+        "created": "2026-09-13T06:12:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "claims/5fa0c3d1.json: block · breach-resolve · W0 · web",
+        "ps: owner pid 2210 gone (start time mismatch)",
+        "hooks: no SessionEnd received"
+      ],
+      "advisory": {
+        "text": "Owner pid is gone. Suggest release; berth never auto-kills.",
+        "command": "berth release --port 13000"
+      },
+      "age": "2h 35m"
+    },
+    {
+      "port": 13010,
+      "state": "stale",
+      "project": "breach-resolve",
+      "worktree": 0,
+      "role": "gateway",
+      "kind": "block",
+      "decoded": {
+        "P": 3,
+        "W": 0,
+        "R": 10
+      },
+      "lease": {
+        "port": 13010,
+        "project": "breach-resolve",
+        "worktree": 0,
+        "role": "gateway",
+        "kind": "block",
+        "owner": {
+          "session_id": "5fa0c3d1-7e2b-4f90-b8a4-1c3d5e7f9a02",
+          "tool": "claude-code",
+          "pid": 2210,
+          "pid_start": 1789279920
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/breach-resolve",
+        "created": "2026-09-13T06:12:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "claims/5fa0c3d1.json: block · breach-resolve · W0 · gateway (extras.gateway = 10)",
+        "ps: owner pid 2210 gone"
+      ],
+      "advisory": {
+        "text": "Owner pid is gone. Suggest release; berth never auto-kills.",
+        "command": "berth release --port 13010"
+      },
+      "age": "2h 35m"
+    },
+    {
+      "port": 40377,
+      "state": "stale",
+      "project": "breach-resolve",
+      "worktree": 0,
+      "role": "dynamic",
+      "kind": "dynamic",
+      "decoded": null,
+      "lease": {
+        "port": 40377,
+        "project": "breach-resolve",
+        "worktree": 0,
+        "role": "dynamic",
+        "kind": "dynamic",
+        "owner": {
+          "session_id": "5fa0c3d1-7e2b-4f90-b8a4-1c3d5e7f9a02",
+          "tool": "claude-code",
+          "pid": 2210,
+          "pid_start": 1789279920
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/breach-resolve",
+        "expires": "2026-09-13T14:27:12.000Z",
+        "note": "--dynamic 1",
+        "created": "2026-09-13T06:27:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "claims/5fa0c3d1.json: dynamic · breach-resolve · --dynamic 1",
+        "ps: owner pid 2210 gone; TTL not yet reached"
+      ],
+      "advisory": {
+        "text": "Owner pid is gone. Suggest release; berth never auto-kills.",
+        "command": "berth release --port 40377"
+      },
+      "age": "2h 20m"
+    },
+    {
+      "port": 23200,
+      "state": "orphan",
+      "project": "swe-ai-ml-kb",
+      "worktree": 2,
+      "role": "web",
+      "kind": "block",
+      "decoded": {
+        "P": 13,
+        "W": 2,
+        "R": 0
+      },
+      "lease": {
+        "port": 23200,
+        "project": "swe-ai-ml-kb",
+        "worktree": 2,
+        "role": "web",
+        "kind": "block",
+        "owner": {
+          "session_id": "90e2b6aa-4c5d-4a1e-8f7b-2d9c0e1f3a56",
+          "tool": "claude-code",
+          "pid": 1873
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/swe-ai-ml-kb/.claude/worktrees/rag-eval",
+        "created": "2026-09-12T05:47:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "leases.json: block · swe-ai-ml-kb · W2 · web",
+        "stat(cwd): ENOENT — worktree removed",
+        "tombstone: W=2 stays reserved for swe-ai-ml-kb"
+      ],
+      "advisory": {
+        "text": "Lease cwd no longer exists. Suggest release; tombstone keeps the worktree ID.",
+        "command": "berth release --port 23200"
+      },
+      "age": "1d 3h"
+    },
+    {
+      "port": 18002,
+      "state": "drift",
+      "project": "learnlock-studio",
+      "worktree": 0,
+      "role": "db",
+      "kind": "block",
+      "decoded": {
+        "P": 8,
+        "W": 0,
+        "R": 2
+      },
+      "lease": {
+        "port": 18002,
+        "project": "learnlock-studio",
+        "worktree": 0,
+        "role": "db",
+        "kind": "block",
+        "owner": {
+          "tool": "human"
+        },
+        "cwd": "/Users/amiable-dev/projects/amiable/learnlock-studio",
+        "note": "adopted via berth adopt 18002 --owner human",
+        "created": "2026-09-13T07:55:12.000Z"
+      },
+      "live": null,
+      "evidence": [
+        "leases.json: adopted via berth adopt 18002 --owner human",
+        "docker: container learnlock-studio-db-1 label working_dir=/Users/amiable-dev/projects/amiable/learnlock-studio seen at 08:55",
+        "docker: container gone after colima restart at 09:20; nothing bound on 18002"
+      ],
+      "advisory": {
+        "text": "Config declares a port outside its allocation, or a labelled service vanished. Never reassign.",
+        "command": "berth scan --write"
+      },
+      "age": "0h 52m"
+    },
+    {
+      "port": 9091,
+      "state": "drift",
+      "project": "standards-telemetry",
+      "worktree": 0,
+      "role": "prometheus",
+      "kind": "declared",
+      "decoded": null,
+      "lease": null,
+      "live": null,
+      "evidence": [
+        "berth scan: docker-compose.yml maps prometheus to 9091 (duplicate of the shared stack on 9090)",
+        "policy: 9090 belongs to shared.observability (skills-telemetry); 9091 is outside the standards-telemetry allocation",
+        "lsof: nothing bound on 9091"
+      ],
+      "advisory": {
+        "text": "Config declares a port outside its allocation, or a labelled service vanished. Never reassign.",
+        "command": "berth scan --write"
+      }
+    }
+  ],
+  "sessions": [
+    {
+      "id": "c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90",
+      "short": "c4b1e7a0",
+      "tool": "claude-code",
+      "pid": 3120,
+      "started": "2026-09-13T07:41:00.000Z",
+      "ended": null,
+      "alive": true,
+      "project": "skills-telemetry",
+      "worktree": 0,
+      "cwd": "/Users/amiable-dev/projects/amiable/skills-telemetry",
+      "cwdExists": true,
+      "leases": [
+        3000,
+        3001,
+        3200,
+        4317,
+        4318,
+        8888,
+        9090,
+        5432
+      ],
+      "howWeKnow": [
+        "claims/c4b1e7a0.json",
+        "ps -E on pids 478/480 (limactl) shows CLAUDE_CODE_SESSION_ID"
+      ],
+      "worst": "ok"
+    },
+    {
+      "id": "7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410",
+      "short": "7d2f91bc",
+      "tool": "claude-code",
+      "pid": 5588,
+      "started": "2026-09-13T08:15:00.000Z",
+      "ended": null,
+      "alive": true,
+      "project": "chancery",
+      "worktree": 0,
+      "cwd": "/Users/amiable-dev/projects/amiable/chancery",
+      "cwdExists": true,
+      "leases": [
+        17000,
+        17001,
+        17002
+      ],
+      "howWeKnow": [
+        "claims/7d2f91bc.json",
+        "ps -E on node 5610/5623 shows CLAUDECODE=1"
+      ],
+      "worst": "idle"
+    },
+    {
+      "id": "e91a4c07-58d2-47f3-b1c6-9e0a3d2f7b18",
+      "short": "e91a4c07",
+      "tool": "claude-code",
+      "pid": 6102,
+      "started": "2026-09-13T08:31:00.000Z",
+      "ended": null,
+      "alive": true,
+      "project": "chancery",
+      "worktree": 1,
+      "cwd": "/Users/amiable-dev/projects/amiable/chancery/.claude/worktrees/feat-ledger",
+      "cwdExists": true,
+      "leases": [
+        17100,
+        17101
+      ],
+      "howWeKnow": [
+        "claims/e91a4c07.json",
+        "SessionStart hook context"
+      ],
+      "worst": "conflict"
+    },
+    {
+      "id": "2b8dd4f5-c3a1-4d67-a0f2-7e5b8c9d1a34",
+      "short": "2b8dd4f5",
+      "tool": "claude-code",
+      "pid": 4477,
+      "started": "2026-09-13T07:58:00.000Z",
+      "ended": null,
+      "alive": true,
+      "project": "llm-council",
+      "worktree": 0,
+      "cwd": "/Users/amiable-dev/projects/amiable/llm-council",
+      "cwdExists": true,
+      "leases": [
+        16001,
+        8000,
+        40012
+      ],
+      "howWeKnow": [
+        "claims/2b8dd4f5.json",
+        "ps -E on uvicorn 4490"
+      ],
+      "worst": "idle"
+    },
+    {
+      "id": "38c7f0de-1b9a-4e2c-9d73-4f6a8b0c5e21",
+      "short": "38c7f0de",
+      "tool": "claude-code",
+      "pid": 8812,
+      "started": "2026-09-13T08:40:00.000Z",
+      "ended": null,
+      "alive": true,
+      "project": "sightline",
+      "worktree": 0,
+      "cwd": "/Users/amiable-dev/projects/monstrous/sightline",
+      "cwdExists": true,
+      "leases": [
+        15000,
+        15001
+      ],
+      "howWeKnow": [
+        "claims/38c7f0de.json",
+        "ps -E on vite 8812 shows CLAUDE_CODE_SESSION_ID"
+      ],
+      "worst": "idle"
+    },
+    {
+      "id": "5fa0c3d1-7e2b-4f90-b8a4-1c3d5e7f9a02",
+      "short": "5fa0c3d1",
+      "tool": "claude-code",
+      "started": "2026-09-13T06:12:00.000Z",
+      "ended": "2026-09-13T07:20:00.000Z",
+      "alive": false,
+      "project": "breach-resolve",
+      "worktree": 0,
+      "cwd": "/Users/amiable-dev/projects/amiable/breach-resolve",
+      "cwdExists": true,
+      "leases": [
+        13000,
+        13010,
+        40377
+      ],
+      "howWeKnow": [
+        "claims/5fa0c3d1.json",
+        "no SessionEnd received",
+        "owner pid 2210 dead (start time mismatch)"
+      ],
+      "worst": "stale"
+    },
+    {
+      "id": "90e2b6aa-4c5d-4a1e-8f7b-2d9c0e1f3a56",
+      "short": "90e2b6aa",
+      "tool": "claude-code",
+      "started": "2026-09-12T05:40:00.000Z",
+      "ended": "2026-09-12T17:05:00.000Z",
+      "alive": false,
+      "project": "swe-ai-ml-kb",
+      "worktree": 2,
+      "cwd": "/Users/amiable-dev/projects/amiable/swe-ai-ml-kb/.claude/worktrees/rag-eval",
+      "cwdExists": false,
+      "leases": [
+        23200
+      ],
+      "howWeKnow": [
+        "leases.json",
+        "cwd stat() fails",
+        "tombstone kept for W2"
+      ],
+      "worst": "orphan"
+    },
+    {
+      "id": "human",
+      "short": "human",
+      "tool": "human",
+      "alive": false,
+      "cwdExists": true,
+      "leases": [
+        10000,
+        5433,
+        1025,
+        8025,
+        5439,
+        6380,
+        18002
+      ],
+      "howWeKnow": [
+        "lsof cwd",
+        "docker ps labels",
+        "no session marker in ps -E"
+      ],
+      "worst": "drift"
+    },
+    {
+      "id": "system",
+      "short": "system",
+      "tool": "macos",
+      "alive": false,
+      "cwd": "/",
+      "cwdExists": true,
+      "leases": [
+        5000,
+        7000
+      ],
+      "howWeKnow": [
+        "netstat -anv (root listeners lsof cannot see)"
+      ],
+      "worst": "unmanaged"
+    }
+  ],
+  "summary": {
+    "ports": 33,
+    "attention": 2,
+    "liveSessions": 5,
+    "byState": {
+      "ok": 17,
+      "idle": 3,
+      "stale": 3,
+      "orphan": 1,
+      "unmanaged": 5,
+      "squatter": 1,
+      "conflict": 1,
+      "drift": 2
+    }
+  }
+}

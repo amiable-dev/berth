@@ -3,3 +3,8 @@ node_modules/
 dist/
 graft/
 .council/
+coverage/
+*.tgz
+.ds-build-meta.json
+src/ui/page.generated.ts
+build/

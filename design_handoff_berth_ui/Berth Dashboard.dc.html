@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;}
+body{background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.45;-webkit-font-smoothing:antialiased;
+--bg:#0b0d10;--panel:#10131a;--panel2:#161a22;--line:#232932;--fg:#d7dce3;--dim:#7f8994;--faint:#3b434e;--sel:#1a2130;
+--ok:#3fd68b;--idle:#b08d3c;--stale:#f2b135;--orphan:#e0812a;--unmanaged:#9aa5b1;--squatter:#ff6b5d;--conflict:#ff3b3b;--drift:#4ea6ff;--reserved:#5b6570;--empty:#141820;}
+body[data-theme="light"]{--bg:#f2f2ee;--panel:#fafaf7;--panel2:#ebebe6;--line:#d5d5cf;--fg:#1b1e22;--dim:#646c75;--faint:#b9bdc2;--sel:#e3e6ea;
+--ok:#137a42;--idle:#8a6a15;--stale:#a56d00;--orphan:#b25a0f;--unmanaged:#5d6772;--squatter:#c9352a;--conflict:#c40e0e;--drift:#175fb8;--reserved:#8b949d;--empty:#e6e6e1;}
+a{color:var(--drift);text-decoration:none}a:hover{text-decoration:underline}
+input,select,button{font:inherit;color:inherit}
+input::placeholder{color:var(--faint)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div style="display:flex;flex-direction:column;height:100vh;min-height:640px;background:var(--bg);color:var(--fg);overflow:hidden">
+  <header style="display:flex;align-items:center;flex-wrap:wrap;gap:0 12px;min-height:40px;padding:0 12px;border-bottom:1px solid var(--line);background:var(--panel);flex-shrink:0">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-shrink:0;height:40px;line-height:40px">
+      <span style="font-weight:600;font-size:13px;letter-spacing:.04em">berth</span>
+      <span style="color:var(--dim);font-size:11px">ui :10000</span>
+    </div>
+    <nav style="display:flex;gap:2px;height:40px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+        <button onClick="{{ t.go }}" style="background:none;border:0;border-bottom:2px solid {{ t.line }};color:{{ t.color }};padding:0 10px;height:40px;cursor:pointer;font-size:12px;letter-spacing:.02em;white-space:nowrap" style-hover="color:var(--fg)">{{ t.label }}<span style="color:var(--dim);margin-left:6px;font-size:10px">{{ t.count }}</span></button>
+      </sc-for>
+    </nav>
+    <div style="flex:1 0 0"></div>
+    <input value="{{ query }}" onChange="{{ setQuery }}" placeholder="search port, project, pid…" style="flex:0 1 220px;min-width:110px;height:24px;margin:7px 0;background:var(--bg);border:1px solid var(--line);padding:0 8px;outline:none;font-size:11px" style-focus="border-color:var(--dim)">
+    <div style="display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;flex-shrink:0;white-space:nowrap;height:40px">
+      <span style="width:6px;height:6px;border-radius:50%;background:{{ pollDot }};animation:{{ pollAnim }};flex-shrink:0"></span>
+      <span style="margin-right:2px">{{ ago }}</span>
+      <button onClick="{{ togglePoll }}" title="Poll berth check --json every 5 s" style="background:none;border:1px solid var(--line);height:22px;padding:0 8px;cursor:pointer;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:{{ pollColor }}" style-hover="border-color:var(--dim)">poll {{ pollLabel }}</button>
+      <button onClick="{{ refresh }}" style="background:none;border:1px solid var(--line);height:22px;padding:0 8px;cursor:pointer;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg)" style-hover="border-color:var(--dim)">refresh</button>
+      <button onClick="{{ toggleTheme }}" style="background:none;border:1px solid var(--line);height:22px;width:22px;cursor:pointer;font-size:11px;color:var(--fg);display:grid;place-items:center" style-hover="border-color:var(--dim)">{{ themeGlyph }}</button>
+    </div>
+  </header>
+
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;min-height:32px;padding:5px 12px;border-bottom:1px solid var(--line);flex-shrink:0;box-sizing:border-box">
+    <span style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-right:4px">state</span>
+    <sc-for list="{{ stateFilters }}" as="f" hint-placeholder-count="8">
+      <button onClick="{{ f.toggle }}" style="display:flex;align-items:center;gap:5px;background:{{ f.bg }};border:1px solid {{ f.border }};height:20px;padding:0 7px;cursor:pointer;font-size:10px;letter-spacing:.04em;color:{{ f.color }};opacity:{{ f.opacity }};white-space:nowrap" style-hover="opacity:1"><span style="width:7px;height:7px;background:{{ f.swatch }}"></span>{{ f.label }}<span style="color:var(--dim)">{{ f.count }}</span></button>
+    </sc-for>
+    <span style="width:1px;height:16px;background:var(--line);margin:0 6px"></span>
+    <span style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">project</span>
+    <select value="{{ projectFilter }}" onChange="{{ setProject }}" style="background:var(--bg);border:1px solid var(--line);height:20px;font-size:11px;padding:0 4px;outline:none;max-width:220px">
+      <option value="">all</option>
+      <sc-for list="{{ projectOptions }}" as="p" hint-placeholder-count="3"><option value="{{ p.name }}">{{ p.label }}</option></sc-for>
+    </select>
+    <sc-if value="{{ hasFilters }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ clearFilters }}" style="background:none;border:0;color:var(--drift);cursor:pointer;font-size:10px;padding:0 6px">clear</button>
+    </sc-if>
+    <div style="flex:1"></div>
+    <span style="color:var(--dim);font-size:10px;white-space:nowrap">{{ summary }}</span>
+  </div>
+
+  <div style="display:flex;flex:1;min-height:0">
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
+
+      <sc-if value="{{ isSessions }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);flex:1;min-height:0">
+          <div style="border-right:1px solid var(--line);overflow-y:auto">
+            <div style="display:grid;grid-template-columns:1fr auto;padding:6px 12px;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg)"><span>session</span><span>leases</span></div>
+            <sc-for list="{{ sessionList }}" as="s" hint-placeholder-count="6">
+              <div onClick="{{ s.select }}" style="display:grid;grid-template-columns:8px 1fr auto;gap:0 10px;align-items:start;padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer;background:{{ s.bg }}" style-hover="background:var(--sel)">
+                <span style="width:8px;height:8px;margin-top:4px;background:{{ s.worstColor }}"></span>
+                <div style="min-width:0">
+                  <div style="display:flex;gap:8px;align-items:baseline"><span style="font-weight:600">{{ s.short }}</span><span style="color:var(--dim);font-size:10px">{{ s.tool }}</span></div>
+                  <div style="color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.where }}</div>
+                  <div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">
+                    <sc-for list="{{ s.states }}" as="c" hint-placeholder-count="1"><span style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:{{ c.color }};border:1px solid {{ c.color }};padding:0 4px;line-height:14px">{{ c.label }} {{ c.n }}</span></sc-for>
+                  </div>
+                </div>
+                <span style="color:var(--dim);font-size:11px;text-align:right">{{ s.count }}<div style="font-size:10px">{{ s.alive }}</div></span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="overflow:auto;min-width:0">
+            <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 24px">
+              <div><div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">session</div><div style="font-weight:600;font-size:13px">{{ sel.id }}</div></div>
+              <div><div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">tool · pid</div><div>{{ sel.tool }} <span style="color:var(--dim)">·</span> {{ sel.pidText }}</div></div>
+              <div><div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">project · worktree · block</div><div>{{ sel.projectText }} <span style="color:var(--dim)">·</span> W{{ sel.W }} <span style="color:var(--dim)">·</span> {{ sel.block }}</div></div>
+              <div style="grid-column:1/-1"><div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">cwd</div><div style="color:{{ sel.cwdColor }}">{{ sel.cwd }} <span style="color:var(--dim)">{{ sel.cwdNote }}</span></div></div>
+              <div style="grid-column:1/-1"><div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">how we know</div><div style="color:var(--dim)">{{ sel.how }}</div></div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead><tr style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;text-align:left">
+                <th style="padding:6px 16px;border-bottom:1px solid var(--line);font-weight:500">port</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">role</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">state</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">live holder</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">kind</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">age</th><th style="padding:6px 16px;border-bottom:1px solid var(--line);font-weight:500">url</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ selLeases }}" as="r" hint-placeholder-count="4">
+                  <tr onClick="{{ r.open }}" style="cursor:pointer;background:{{ r.bg }};opacity:{{ r.opacity }}" style-hover="background:var(--sel)">
+                    <td style="padding:5px 16px;border-bottom:1px solid var(--line);font-weight:600">{{ r.port }}</td>
+                    <td style="padding:5px 8px;border-bottom:1px solid var(--line)">{{ r.role }}</td>
+                    <td style="padding:5px 8px;border-bottom:1px solid var(--line)"><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:{{ r.color }};border:1px solid {{ r.color }};padding:1px 5px">{{ r.state }}</span></td>
+                    <td style="padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap">{{ r.holder }}</td>
+                    <td style="padding:5px 8px;border-bottom:1px solid var(--line);color:var(--dim)">{{ r.kind }}</td>
+                    <td style="padding:5px 8px;border-bottom:1px solid var(--line);color:var(--dim)">{{ r.age }}</td>
+                    <td style="padding:5px 16px;border-bottom:1px solid var(--line)"><a href="{{ r.url }}" target="_blank">{{ r.urlText }}</a></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <sc-if value="{{ selEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:24px 16px;color:var(--dim)">No leases match the current filters.</div></sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTable }}" hint-placeholder-val="{{ false }}">
+        <div style="overflow:auto;flex:1">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px">
+            <thead><tr style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;text-align:left;position:sticky;top:0;background:var(--bg)">
+              <th style="padding:6px 12px;border-bottom:1px solid var(--line);font-weight:500">project / worktree</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">port</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">role</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">state</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">live holder</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">session</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">cwd</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">age</th><th style="padding:6px 12px;border-bottom:1px solid var(--line);font-weight:500">url</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+                <tr><td colspan="9" style="padding:10px 12px 4px;border-bottom:1px solid var(--line);background:var(--panel)"><span style="font-weight:600">{{ g.name }}</span><span style="color:var(--dim);margin-left:10px">P={{ g.P }} · {{ g.range }}</span><span style="color:var(--dim);margin-left:10px;font-size:11px">{{ g.path }}</span></td></tr>
+                <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2">
+                  <tr onClick="{{ r.open }}" style="cursor:pointer;opacity:{{ r.opacity }}" style-hover="background:var(--sel)">
+                    <td style="padding:4px 12px 4px 24px;border-bottom:1px solid var(--line);color:var(--dim)">W{{ r.W }} <span style="color:var(--faint)">{{ r.wname }}</span></td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--line);font-weight:600">{{ r.port }}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--line)">{{ r.role }}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--line)"><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:{{ r.color }};border:1px solid {{ r.color }};padding:1px 5px">{{ r.state }}</span></td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap">{{ r.holder }}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--line);color:var(--dim)">{{ r.session }}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--line);color:var(--dim);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.cwd }}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--line);color:var(--dim)">{{ r.age }}</td>
+                    <td style="padding:4px 12px;border-bottom:1px solid var(--line)"><a href="{{ r.url }}" target="_blank">{{ r.urlText }}</a></td>
+                  </tr>
+                </sc-for>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isMap }}" hint-placeholder-val="{{ false }}">
+        <div style="overflow:auto;flex:1;padding:12px 16px 24px" onMouseLeave="{{ hideTip }}">
+          <div style="display:flex;gap:16px;align-items:center;margin-bottom:10px;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;flex-wrap:wrap">
+            <span>block range 10000–39999 · one row per P · cells = roles 00–09 per worktree</span>
+            <div style="flex:1"></div>
+            <sc-for list="{{ legend }}" as="l" hint-placeholder-count="8"><span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:{{ l.bg }}"></span>{{ l.label }}</span></sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:auto auto 1fr;gap:0;border-top:1px solid var(--line)">
+            <sc-for list="{{ mapRows }}" as="row" hint-placeholder-count="10">
+              <div style="padding:0 10px 0 0;height:22px;display:flex;align-items:center;justify-content:flex-end;color:var(--dim);font-size:10px;border-bottom:1px solid var(--line);opacity:{{ row.opacity }}">{{ row.P }}</div>
+              <div style="padding:0 14px 0 0;height:22px;display:flex;align-items:center;font-size:11px;border-bottom:1px solid var(--line);white-space:nowrap;color:{{ row.nameColor }};opacity:{{ row.opacity }}">{{ row.name }}<span style="color:var(--faint);margin-left:8px;font-size:10px">{{ row.range }}</span></div>
+              <div style="height:22px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);opacity:{{ row.opacity }}">
+                <sc-for list="{{ row.groups }}" as="grp" hint-placeholder-count="1">
+                  <div style="display:flex;align-items:center;gap:2px">
+                    <span style="color:var(--faint);font-size:9px;width:18px">W{{ grp.W }}</span>
+                    <sc-for list="{{ grp.cells }}" as="c" hint-placeholder-count="10">
+                      <div onClick="{{ c.open }}" onMouseEnter="{{ c.enter }}" onMouseMove="{{ c.move }}" onMouseLeave="{{ c.leave }}" style="width:22px;height:14px;background:{{ c.bg }};border:1px solid {{ c.border }};cursor:{{ c.cursor }};box-sizing:border-box" style-hover="outline:1px solid var(--fg)"></div>
+                    </sc-for>
+                    <sc-if value="{{ grp.hasExtras }}" hint-placeholder-val="{{ false }}">
+                      <span style="color:var(--faint);font-size:9px;margin-left:4px">+{{ grp.extraCount }} extras</span>
+                      <sc-for list="{{ grp.extras }}" as="c" hint-placeholder-count="1">
+                        <div onClick="{{ c.open }}" onMouseEnter="{{ c.enter }}" onMouseMove="{{ c.move }}" onMouseLeave="{{ c.leave }}" style="width:12px;height:14px;background:{{ c.bg }};border:1px solid {{ c.border }};cursor:{{ c.cursor }};box-sizing:border-box" style-hover="outline:1px solid var(--fg)"></div>
+                      </sc-for>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:24px;color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">legacy strip 1024–9999 · declared ports and live listeners outside the block scheme</div>
+          <div style="position:relative;height:56px;border:1px solid var(--line);background:var(--panel)">
+            <sc-for list="{{ legacyBands }}" as="b" hint-placeholder-count="2"><div title="{{ b.title }}" style="position:absolute;top:0;bottom:0;left:{{ b.left }};width:{{ b.width }};background:repeating-linear-gradient(135deg,var(--faint) 0 1px,transparent 1px 6px);opacity:.5"></div></sc-for>
+            <sc-for list="{{ legacyTicks }}" as="t" hint-placeholder-count="12">
+              <div onClick="{{ t.open }}" onMouseEnter="{{ t.enter }}" onMouseMove="{{ t.move }}" onMouseLeave="{{ t.leave }}" style="position:absolute;left:{{ t.left }};top:{{ t.top }};width:3px;height:{{ t.height }};background:{{ t.bg }};cursor:pointer" style-hover="outline:1px solid var(--fg)"></div>
+            </sc-for>
+            <sc-for list="{{ legacyLabels }}" as="l" hint-placeholder-count="6"><span style="position:absolute;bottom:2px;left:{{ l.left }};transform:translateX(-50%);font-size:9px;color:var(--faint)">{{ l.text }}</span></sc-for>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:6px;color:var(--dim);font-size:10px;flex-wrap:wrap">
+            <span>tall tick = live listener · short tick = declared only · hatched = reserved (portless 4000–4999, AirPlay 5000/7000)</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isRules }}" hint-placeholder-val="{{ false }}">
+        <div style="overflow:auto;flex:1;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-content:start">
+          <section style="border:1px solid var(--line);background:var(--panel)">
+            <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">scheme · ~/.config/berth/policy.toml</div>
+            <div style="padding:12px;font-size:13px">port = 10000 + 1000·<span style="color:var(--ok)">P</span> + 100·<span style="color:var(--drift)">W</span> + <span style="color:var(--stale)">R</span></div>
+            <div style="padding:0 12px 12px;color:var(--dim);font-size:11px;display:grid;grid-template-columns:auto 1fr;gap:2px 12px">
+              <span style="color:var(--ok)">P</span><span>project, hand-assigned, permanent, 0–29 → blocks 10000–39999</span>
+              <span style="color:var(--drift)">W</span><span>worktree, 0 = main checkout, 1–9 additional</span>
+              <span style="color:var(--stale)">R</span><span>role slot, 00–09 canonical, 10–99 project-named extras</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line)">
+              <sc-for list="{{ roleCards }}" as="r" hint-placeholder-count="10">
+                <div style="padding:8px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)"><div style="color:var(--stale);font-size:11px">{{ r.code }}</div><div style="font-size:11px">{{ r.name }}</div></div>
+              </sc-for>
+            </div>
+          </section>
+          <section style="border:1px solid var(--line);background:var(--panel)">
+            <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">pools and reserved</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;padding:12px;font-size:11px">
+              <span style="color:var(--dim)">dynamic</span><span>40000–41999 · TTL 8 h · kept below 48000</span>
+              <span style="color:var(--dim)">reserved</span><span>0–1023 privileged · 4000–4999 portless · 49152–65535 macOS ephemeral</span>
+              <span style="color:var(--dim)">ports</span><span>5000, 7000 · macOS AirPlay (ControlCenter)</span>
+              <span style="color:var(--dim)">lint</span><span>11211 memcached · 11434 Ollama · 15672 RabbitMQ · 16686 Jaeger · 19999 netdata · 27017 Mongo</span>
+            </div>
+            <div style="padding:8px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">shared.observability · owner skills-telemetry</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px">
+              <sc-for list="{{ sharedPorts }}" as="s" hint-placeholder-count="7"><button onClick="{{ s.open }}" style="background:var(--bg);border:1px solid var(--line);padding:2px 8px;font-size:11px;cursor:pointer;display:flex;gap:6px" style-hover="border-color:var(--dim)"><span style="font-weight:600">{{ s.port }}</span><span style="color:var(--dim)">{{ s.name }}</span></button></sc-for>
+            </div>
+            <div style="padding:0 12px 12px;color:var(--dim);font-size:11px">One stack for every project. breach-resolve, standards-telemetry and llm-council carry duplicates that should point here instead.</div>
+          </section>
+          <section style="border:1px solid var(--line);background:var(--panel);grid-column:1/-1">
+            <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">projects · P is permanent · declared ports register as-is and participate in collision checks</div>
+            <table style="width:100%;border-collapse:collapse;font-size:11px">
+              <thead><tr style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;text-align:left"><th style="padding:6px 12px;border-bottom:1px solid var(--line);font-weight:500">P</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">project</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">block</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">path</th><th style="padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500">declared</th><th style="padding:6px 12px;border-bottom:1px solid var(--line);font-weight:500">extras</th></tr></thead>
+              <tbody><sc-for list="{{ policyRows }}" as="p" hint-placeholder-count="6">
+                <tr><td style="padding:4px 12px;border-bottom:1px solid var(--line);color:var(--ok)">{{ p.P }}</td><td style="padding:4px 8px;border-bottom:1px solid var(--line);font-weight:600">{{ p.name }}</td><td style="padding:4px 8px;border-bottom:1px solid var(--line)">{{ p.range }}</td><td style="padding:4px 8px;border-bottom:1px solid var(--line);color:var(--dim)">{{ p.path }}</td><td style="padding:4px 8px;border-bottom:1px solid var(--line);color:var(--dim)">{{ p.declared }}</td><td style="padding:4px 12px;border-bottom:1px solid var(--line);color:var(--dim)">{{ p.extras }}</td></tr>
+              </sc-for></tbody>
+            </table>
+          </section>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTerm }}" hint-placeholder-val="{{ false }}">
+        <div style="overflow:auto;flex:1;padding:16px">
+          <div style="color:var(--dim);font-size:11px;margin-bottom:8px">Terminal equivalent of the current view. Same data, same states; <span style="color:var(--fg)">--json</span> is the boundary the dashboard polls.</div>
+          <pre style="margin:0;padding:14px 16px;background:var(--panel);border:1px solid var(--line);font-size:12px;line-height:1.5;overflow:auto;white-space:pre"><span style="color:var(--dim)">$ </span><span style="font-weight:600">berth ls</span>
+{{ termLs }}<span style="color:var(--dim)">$ </span><span style="font-weight:600">berth who {{ termWhoPort }}</span>
+{{ termWho }}<span style="color:var(--dim)">$ </span><span style="font-weight:600">berth check</span>
+{{ termCheck }}</pre>
+        </div>
+      </sc-if>
+    </main>
+
+    <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+      <aside style="width:380px;flex-shrink:0;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)">
+          <span style="font-size:18px;font-weight:600">{{ d.port }}</span>
+          <span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:{{ d.color }};border:1px solid {{ d.color }};padding:1px 6px">{{ d.state }}</span>
+          <div style="flex:1"></div>
+          <button onClick="{{ closeDrawer }}" style="background:none;border:0;color:var(--dim);cursor:pointer;font-size:14px" style-hover="color:var(--fg)">×</button>
+        </div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--line)">
+          <div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">decoded</div>
+          <div style="display:flex;gap:2px;font-size:13px;align-items:baseline">
+            <span style="color:var(--faint)">10000 +</span>
+            <span style="color:var(--ok);margin-left:6px">1000·{{ d.P }}</span><span style="color:var(--faint)"> +</span>
+            <span style="color:var(--drift);margin-left:6px">100·{{ d.W }}</span><span style="color:var(--faint)"> +</span>
+            <span style="color:var(--stale);margin-left:6px">{{ d.R }}</span>
+          </div>
+          <div style="color:var(--dim);font-size:11px;margin-top:4px">{{ d.decoded }}</div>
+        </div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:11px">
+          <span style="color:var(--dim)">lease</span><span>{{ d.lease }}</span>
+          <span style="color:var(--dim)">owner</span><span>{{ d.owner }}</span>
+          <span style="color:var(--dim)">live holder</span><span style="color:{{ d.holderColor }}">{{ d.holder }}</span>
+          <span style="color:var(--dim)">cwd</span><span style="word-break:break-all">{{ d.cwd }}</span>
+          <span style="color:var(--dim)">created</span><span>{{ d.created }}</span>
+          <span style="color:var(--dim)">expires</span><span>{{ d.expires }}</span>
+          <span style="color:var(--dim)">url</span><a href="{{ d.url }}" target="_blank">{{ d.urlText }}</a>
+        </div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--line)">
+          <div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">how we know</div>
+          <sc-for list="{{ d.how }}" as="h" hint-placeholder-count="2"><div style="display:grid;grid-template-columns:8px 1fr;gap:8px;font-size:11px;margin-bottom:4px"><span style="color:var(--faint)">›</span><span style="color:var(--dim)">{{ h }}</span></div></sc-for>
+        </div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--line)">
+          <div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">advisory</div>
+          <div style="font-size:11px;color:{{ d.color }};margin-bottom:8px">{{ d.advice }}</div>
+          <sc-if value="{{ d.hasCmd }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;border:1px solid var(--line);background:var(--bg)">
+              <code style="flex:1;padding:6px 10px;font-size:11px;white-space:nowrap;overflow-x:auto">{{ d.cmd }}</code>
+              <button onClick="{{ copyCmd }}" style="background:none;border:0;border-left:1px solid var(--line);padding:0 10px;cursor:pointer;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg)" style-hover="background:var(--sel)">{{ copyLabel }}</button>
+            </div>
+            <div style="color:var(--dim);font-size:10px;margin-top:6px">berth never kills or reassigns. Exit code is always 0.</div>
+          </sc-if>
+        </div>
+        <div style="padding:12px 14px">
+          <div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">who {{ d.port }} · json</div>
+          <pre style="margin:0;font-size:10px;line-height:1.5;color:var(--dim);white-space:pre-wrap;word-break:break-all">{{ d.json }}</pre>
+        </div>
+      </aside>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ tipOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:{{ tip.x }};top:{{ tip.y }};pointer-events:none;z-index:10;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;font-size:11px;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:280px">
+      <div style="display:flex;gap:8px;align-items:baseline"><span style="font-weight:600">{{ tip.port }}</span><span style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:{{ tip.color }}">{{ tip.state }}</span></div>
+      <div style="color:var(--dim)">{{ tip.line1 }}</div>
+      <div style="color:var(--dim)">{{ tip.line2 }}</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;}}">
+const ROLES=['web','api','db','cache','smtp','mail-ui','docs','worker','otlp-grpc','otlp-http'];
+const PROJECTS=[
+ {P:0,name:'berth',path:'~/port-visualiser',declared:[]},
+ {P:1,name:'skills-telemetry',path:'~/projects/amiable/skills-telemetry',declared:[5432]},
+ {P:2,name:'36-inch-platform',path:'~/projects/36-inch-penguin/36-inch-platform',declared:[3001,5433,1025,8025]},
+ {P:3,name:'breach-resolve',path:'~/projects/amiable/breach-resolve',declared:[3000,8000,8001,8002,8003,8004,8005,8080,5432,6379,9200,16686],extras:{gateway:10,auth:11,incidents:12,playbooks:13,integrations:14,notifications:15,analytics:16,scheduler:17,audit:18,search:19}},
+ {P:4,name:'cith-watch',path:'~/projects/amiable/cith-watch',declared:[5173,8787,5439,6380]},
+ {P:5,name:'sightline',path:'~/projects/monstrous/sightline',declared:[5173,8787]},
+ {P:6,name:'llm-council',path:'~/projects/amiable/llm-council',declared:[8000]},
+ {P:7,name:'chancery',path:'~/projects/amiable/chancery',declared:[]},
+ {P:8,name:'learnlock-studio',path:'~/projects/amiable/learnlock-studio',declared:[5432]},
+ {P:9,name:'learnlock',path:'~/projects/amiable/learnlock',declared:[]},
+ {P:10,name:'conductor',path:'~/projects/amiable/conductor',declared:[5173]},
+ {P:11,name:'monstrous-conductor',path:'~/projects/monstrous/conductor',declared:[5173]},
+ {P:12,name:'standards-telemetry',path:'~/projects/amiable/standards-telemetry',declared:[5432]},
+ {P:13,name:'swe-ai-ml-kb',path:'~/projects/amiable/swe-ai-ml-kb',declared:[]},
+ {P:14,name:'docusaurus-plugin-stentorosaur',path:'~/projects/amiable/docusaurus-plugin-stentorosaur',declared:[3000]},
+ {P:15,name:'amiable-docusaurus',path:'~/projects/amiable/amiable-docusaurus',declared:[3000]},
+ {P:16,name:'monstrous-media',path:'~/projects/monstrous/monstrous-media',declared:[3000]},
+ {P:17,name:'conductor-website',path:'~/projects/monstrous/conductor-website',declared:[3000]},
+ {P:18,name:'heptara',path:'~/projects/heptara/heptara',declared:[]},
+ {P:19,name:'sre-agent',path:'~/projects/amiable/sre-agent',declared:[]},
+ {P:20,name:'kpm',path:'~/projects/amiable/kpm',declared:[8091]},
+];
+const SESSIONS=[
+ {id:'c4b1e7a0-3f2d-4e81-9b5a-0d6c1a7e2f90',tool:'claude',project:'skills-telemetry',W:0,pid:3120,cwd:'~/projects/amiable/skills-telemetry',started:'08:41',how:'claims/c4b1e7a0.json · ps -E on pids 478/480 (limactl) shows CLAUDE_CODE_SESSION_ID'},
+ {id:'7d2f91bc-a6e4-4c1b-8f0e-52b7d9c3e410',tool:'claude',project:'chancery',W:0,pid:5588,cwd:'~/projects/amiable/chancery',started:'09:15',how:'claims/7d2f91bc.json · ps -E on node 5610/5623 shows CLAUDECODE=1'},
+ {id:'e91a4c07-58d2-47f3-b1c6-9e0a3d2f7b18',tool:'claude',project:'chancery',W:1,pid:6102,cwd:'~/projects/amiable/chancery/.claude/worktrees/feat-ledger',started:'09:31',how:'claims/e91a4c07.json · SessionStart hook context'},
+ {id:'2b8dd4f5-c3a1-4d67-a0f2-7e5b8c9d1a34',tool:'claude',project:'llm-council',W:0,pid:4477,cwd:'~/projects/amiable/llm-council',started:'08:58',how:'claims/2b8dd4f5.json · ps -E on uvicorn 4490'},
+ {id:'38c7f0de-1b9a-4e2c-9d73-4f6a8b0c5e21',tool:'claude',project:'sightline',W:0,pid:8812,cwd:'~/projects/monstrous/sightline',started:'09:40',how:'claims/38c7f0de.json · ps -E on vite 8812 shows CLAUDE_CODE_SESSION_ID'},
+ {id:'5fa0c3d1-7e2b-4f90-b8a4-1c3d5e7f9a02',tool:'claude',project:'breach-resolve',W:0,pid:null,cwd:'~/projects/amiable/breach-resolve',started:'07:12',ended:'08:20',how:'claims/5fa0c3d1.json · no SessionEnd received · owner pid 2210 dead (start time mismatch)'},
+ {id:'90e2b6aa-4c5d-4a1e-8f7b-2d9c0e1f3a56',tool:'claude',project:'swe-ai-ml-kb',W:2,pid:null,cwd:'~/projects/amiable/swe-ai-ml-kb/.claude/worktrees/rag-eval',started:'yesterday',ended:'yesterday',how:'leases.json · cwd stat() fails · tombstone kept for W2',cwdMissing:true},
+ {id:'human',tool:'human',project:'—',W:0,pid:null,cwd:'VS Code / terminal',started:'—',how:'lsof cwd · docker ps labels · no session marker in ps -E'},
+ {id:'system',tool:'macOS',project:'—',W:0,pid:null,cwd:'/',started:'boot',how:'netstat -anv (root listeners lsof cannot see)'},
+];
+const S=(i)=>SESSIONS[i].id;
+const L=[
+ {port:3000,project:'skills-telemetry',W:0,role:'grafana',kind:'shared',owner:S(0),state:'ok',holder:'container skills-telemetry-grafana-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['docker ps label com.docker.compose.project.working_dir = ~/projects/amiable/skills-telemetry','lsof shows ssh pid 503 (Colima proxy, ignored as owner)']},
+ {port:3001,project:'skills-telemetry',W:0,role:'langfuse',kind:'shared',owner:S(0),state:'ok',holder:'container skills-telemetry-langfuse-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['compose label → skills-telemetry']},
+ {port:3200,project:'skills-telemetry',W:0,role:'tempo',kind:'shared',owner:S(0),state:'ok',holder:'container skills-telemetry-tempo-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['compose label → skills-telemetry']},
+ {port:4317,project:'skills-telemetry',W:0,role:'otlp-grpc',kind:'shared',owner:S(0),state:'ok',holder:'container skills-telemetry-otel-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['compose label → skills-telemetry']},
+ {port:4318,project:'skills-telemetry',W:0,role:'otlp-http',kind:'shared',owner:S(0),state:'ok',holder:'container skills-telemetry-otel-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['compose label → skills-telemetry']},
+ {port:8888,project:'skills-telemetry',W:0,role:'metrics',kind:'shared',owner:S(0),state:'ok',holder:'container skills-telemetry-otel-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['compose label → skills-telemetry']},
+ {port:9090,project:'skills-telemetry',W:0,role:'prometheus',kind:'shared',owner:S(0),state:'ok',holder:'container skills-telemetry-prometheus-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['compose label → skills-telemetry']},
+ {port:5432,project:'skills-telemetry',W:0,role:'db',kind:'declared',owner:S(0),state:'ok',holder:'container skills-telemetry-postgres-1',hpid:503,cwd:'~/projects/amiable/skills-telemetry',age:'1h 06m',how:['declared in policy.toml','compose label → skills-telemetry']},
+ {port:5433,project:'36-inch-platform',W:0,role:'db',kind:'declared',owner:'human',state:'unmanaged',holder:'container penguin-platform-db',hpid:503,cwd:'—',age:'3h 12m',how:['docker ps: container has no compose labels (docker run)','declared by 36-inch-platform, no lease, no session marker']},
+ {port:1025,project:'36-inch-platform',W:0,role:'smtp',kind:'declared',owner:'human',state:'unmanaged',holder:'container penguin-mailpit',hpid:503,cwd:'—',age:'3h 12m',how:['docker run container, unlabelled','declared by 36-inch-platform']},
+ {port:8025,project:'36-inch-platform',W:0,role:'mail-ui',kind:'declared',owner:'human',state:'unmanaged',holder:'container penguin-mailpit',hpid:503,cwd:'—',age:'3h 12m',how:['docker run container, unlabelled','declared by 36-inch-platform']},
+ {port:5439,project:'cith-watch',W:0,role:'db',kind:'declared',owner:'human',state:'ok',holder:'container cith-watch-postgres-1',hpid:503,cwd:'~/projects/amiable/cith-watch',age:'2d 4h',how:['compose label → cith-watch','declared in policy.toml']},
+ {port:6380,project:'cith-watch',W:0,role:'cache',kind:'declared',owner:'human',state:'ok',holder:'container cith-watch-redis-1',hpid:503,cwd:'~/projects/amiable/cith-watch',age:'2d 4h',how:['compose label → cith-watch']},
+ {port:5000,project:'—',W:0,role:'airplay',kind:'reserved',owner:'system',state:'ok',holder:'ControlCenter',hpid:412,cwd:'/',age:'boot',how:['netstat -anv: root listener','policy reserved.ports']},
+ {port:7000,project:'—',W:0,role:'airplay',kind:'reserved',owner:'system',state:'ok',holder:'ControlCenter',hpid:412,cwd:'/',age:'boot',how:['netstat -anv: root listener','policy reserved.ports']},
+ {port:10000,project:'berth',W:0,role:'web',kind:'block',owner:'human',state:'ok',holder:'node 9001 (berth ui)',hpid:9001,cwd:'~/port-visualiser',age:'0h 04m',how:['lsof: node pid 9001, cwd ~/port-visualiser','berth ui registers itself']},
+ {port:17000,project:'chancery',W:0,role:'web',kind:'block',owner:S(1),state:'ok',holder:'node 5610 (next dev)',hpid:5610,cwd:'~/projects/amiable/chancery',age:'0h 31m',how:['claim file 7d2f91bc','ps -E 5610: CLAUDE_CODE_SESSION_ID=7d2f91bc…']},
+ {port:17001,project:'chancery',W:0,role:'api',kind:'block',owner:S(1),state:'ok',holder:'node 5623 (tsx watch)',hpid:5623,cwd:'~/projects/amiable/chancery',age:'0h 30m',how:['claim file 7d2f91bc','ps -E 5623 matches session']},
+ {port:17002,project:'chancery',W:0,role:'db',kind:'block',owner:S(1),state:'idle',holder:'—',hpid:null,cwd:'~/projects/amiable/chancery',age:'0h 31m',how:['claim file 7d2f91bc','nothing bound; owner pid 5588 alive']},
+ {port:17100,project:'chancery',W:1,role:'web',kind:'block',owner:S(2),state:'ok',holder:'node 6140 (next dev)',hpid:6140,cwd:'~/projects/amiable/chancery/.claude/worktrees/feat-ledger',age:'0h 15m',how:['claim file e91a4c07','ps -E 6140 matches session']},
+ {port:17101,project:'chancery',W:1,role:'api',kind:'block',owner:S(2),state:'conflict',holder:'node 5623 (tsx watch)',hpid:5623,cwd:'~/projects/amiable/chancery',age:'0h 12m',how:['lease owner e91a4c07 (W1)','live holder pid 5623 belongs to session 7d2f91bc (W0); ps -E confirms','5623 also holds 17001: it bound both API_PORT values']},
+ {port:16001,project:'llm-council',W:0,role:'api',kind:'block',owner:S(3),state:'ok',holder:'uvicorn 4490',hpid:4490,cwd:'~/projects/amiable/llm-council',age:'0h 47m',how:['claim file 2b8dd4f5','ps -E 4490 matches session']},
+ {port:8000,project:'llm-council',W:0,role:'api',kind:'declared',owner:S(3),state:'idle',holder:'—',hpid:null,cwd:'~/projects/amiable/llm-council',age:'0h 47m',how:['declared in policy.toml','nothing bound; migrated to 16001']},
+ {port:40012,project:'llm-council',W:0,role:'dynamic',kind:'dynamic',owner:S(3),state:'ok',holder:'python 4533 (http.server)',hpid:4533,cwd:'~/projects/amiable/llm-council',age:'0h 22m',expires:'16:58 (8h TTL)',how:['claim file 2b8dd4f5, --dynamic 1','ps -E 4533 matches session']},
+ {port:15000,project:'sightline',W:0,role:'web',kind:'block',owner:S(4),state:'idle',holder:'—',hpid:null,cwd:'~/projects/monstrous/sightline',age:'0h 07m',how:['claim file 38c7f0de','nothing bound; owner alive — see 14000']},
+ {port:15001,project:'sightline',W:0,role:'api',kind:'block',owner:S(4),state:'ok',holder:'workerd 8845 (wrangler dev)',hpid:8845,cwd:'~/projects/monstrous/sightline',age:'0h 06m',how:['claim file 38c7f0de','ps -E 8845 matches session']},
+ {port:14000,project:'cith-watch',W:0,role:'web',kind:'block',owner:null,state:'squatter',holder:'node 8812 (vite)',hpid:8812,cwd:'~/projects/monstrous/sightline',age:'0h 07m',how:['port is inside cith-watch block (P=4), no cith-watch lease','ps -E 8812: CLAUDE_CODE_SESSION_ID=38c7f0de… (sightline session)','vite was started with --port 14000 instead of 15000']},
+ {port:13000,project:'breach-resolve',W:0,role:'web',kind:'block',owner:S(5),state:'stale',holder:'—',hpid:null,cwd:'~/projects/amiable/breach-resolve',age:'2h 35m',how:['claim file 5fa0c3d1','owner pid 2210 gone (start time mismatch)','no SessionEnd hook received']},
+ {port:13010,project:'breach-resolve',W:0,role:'gateway',kind:'block',owner:S(5),state:'stale',holder:'—',hpid:null,cwd:'~/projects/amiable/breach-resolve',age:'2h 35m',how:['claim file 5fa0c3d1 (extras.gateway = 10)','owner pid 2210 gone']},
+ {port:40377,project:'breach-resolve',W:0,role:'dynamic',kind:'dynamic',owner:S(5),state:'stale',holder:'—',hpid:null,cwd:'~/projects/amiable/breach-resolve',age:'2h 20m',expires:'15:27 (8h TTL)',how:['claim file 5fa0c3d1, --dynamic 1','owner pid gone; TTL not yet reached']},
+ {port:23200,project:'swe-ai-ml-kb',W:2,role:'web',kind:'block',owner:S(6),state:'orphan',holder:'—',hpid:null,cwd:'~/projects/amiable/swe-ai-ml-kb/.claude/worktrees/rag-eval',age:'1d 3h',how:['leases.json','stat(cwd) → ENOENT: worktree removed','tombstone keeps W=2 for swe-ai-ml-kb']},
+ {port:18002,project:'learnlock-studio',W:0,role:'db',kind:'block',owner:'human',state:'drift',holder:'—',hpid:null,cwd:'~/projects/amiable/learnlock-studio',age:'0h 52m',how:['lease created via berth adopt --owner human','compose label learnlock-studio-db-1 seen at 08:55','container gone after colima restart at 09:20; tunnel dropped']},
+ {port:9091,project:'standards-telemetry',W:0,role:'prometheus',kind:'declared',owner:'human',state:'drift',holder:'—',hpid:null,cwd:'~/projects/amiable/standards-telemetry',age:'—',how:['berth scan: docker-compose.yml declares prometheus 9090','9090 is owned by shared.observability (skills-telemetry)','repo config declares a port outside its allocation']},
+];
+const STATES=['ok','idle','stale','orphan','unmanaged','squatter','conflict','drift'];
+const HATCH=new Set(['squatter','stale','conflict','orphan']);
+const ADVICE={
+ ok:['none','',''],idle:['none — shown dimmed','',''],
+ stale:['Owner pid is gone. Suggest release; berth never auto-kills.','berth release --port {p}'],
+ orphan:['Lease cwd no longer exists. Suggest release; tombstone keeps the worktree ID.','berth release --port {p}'],
+ unmanaged:['Bound inside a managed range with no lease and no session marker.','berth adopt {p} --owner human'],
+ squatter:['A different session bound a port inside another project\u2019s block. Name the holder and the block owner; do not kill.','berth who {p}'],
+ conflict:['Lease owner differs from the live holder. Tell the owning session its belief is wrong.','berth who {p} --json'],
+ drift:['Config declares a port outside its allocation, or a labelled service vanished. Never reassign.','berth scan --write'],
+};
+const pad=(s,n)=>String(s).padEnd(n);
+class Component extends DCLogic {
+  state={view:'sessions',sel:S(1),query:'',states:new Set(),project:'',drawer:null,tip:null,poll:true,ago:2,copied:false,theme:null};
+  componentDidMount(){this.t=setInterval(()=>{if(this.state.poll)this.setState(s=>({ago:s.ago>=5?0:s.ago+1}))},1000);this.applyTheme();}
+  componentDidUpdate(){this.applyTheme();}
+  componentWillUnmount(){clearInterval(this.t)}
+  applyTheme(){const th=this.state.theme||this.props.theme||'dark';if(document.body.dataset.theme!==th)document.body.dataset.theme=th;}
+  col(st){return `var(--${st})`}
+  decode(p){if(p>=10000&&p<40000){const P=Math.floor((p-10000)/1000),W=Math.floor((p%1000)/100),R=p%100;return {P,W,R,text:`project ${P}${PROJECTS[P]?' ('+PROJECTS[P].name+')':''} · worktree ${W} · role ${String(R).padStart(2,'0')} ${ROLES[R]||'extra'}`}}
+    if(p>=40000&&p<42000)return {P:'—',W:'—',R:'—',text:'dynamic pool 40000–41999 · TTL 8 h'};
+    if(p<1024)return {P:'—',W:'—',R:'—',text:'privileged range, reserved'};
+    return {P:'—',W:'—',R:'—',text:'legacy range 1024–9999 · declared or reserved, outside the block scheme'}}
+  sessOf(id){return SESSIONS.find(s=>s.id===id)}
+  short(id){return id&&id.length>8?id.slice(0,8):id||'—'}
+  matches(l){const q=this.state.query.trim().toLowerCase();const st=this.state.states,pr=this.state.project;
+    if(st.size&&!st.has(l.state))return false;if(pr&&l.project!==pr)return false;
+    if(!q)return true;return [l.port,l.project,l.role,l.holder,l.cwd,l.state,this.short(l.owner),l.hpid].join(' ').toLowerCase().includes(q)}
+  rowOf(l){const s=this.sessOf(l.owner);const url=l.holder!=='—'&&/web|grafana|langfuse|docs|mail-ui|api|gateway|dynamic|prometheus/.test(l.role)&&l.state!=='idle'?`http://localhost:${l.port}`:'';
+    return {port:l.port,role:l.role,state:l.state,color:this.col(l.state),holder:l.holder,kind:l.kind,age:l.age,url:url||'#',urlText:url?url.replace('http://',''):'',opacity:l.state==='idle'?.55:1,
+      session:s?(s.tool==='claude'?this.short(s.id):s.tool):'—',cwd:l.cwd,W:l.W,wname:l.W?(s&&s.cwd.split('/').pop())||'':'main',bg:this.state.drawer===l.port?'var(--sel)':'transparent',open:()=>this.setState({drawer:l.port,copied:false})}}
+  cell(l,port,proj,extraLabel){const st=l?l.state:null;const color=st?`var(--${st})`:null;
+    const bg=l?(HATCH.has(st)?`repeating-linear-gradient(135deg,${color} 0 2px,transparent 2px 5px)`:color):'var(--empty)';
+    const R=port%100,role=extraLabel||(R<10?ROLES[R]:'extra '+R);
+    const show=(e)=>this.setState({tip:{x:e.clientX+12,y:e.clientY+14,port,state:st||'free',color:color||'var(--dim)',line1:`${proj?proj.name:'unassigned'} · W${Math.floor((port%1000)/100)} · ${role}`,line2:l?`${l.holder}${l.owner?' · '+(this.sessOf(l.owner)?.tool==='claude'?'session '+this.short(l.owner):l.owner):''}`:'no lease, nothing bound'}});
+    return {bg,border:l?color:'var(--line)',cursor:l?'pointer':'default',open:()=>l&&this.setState({drawer:port,copied:false}),enter:show,move:show,leave:()=>this.setState({tip:null})}}
+  renderVals(){
+    const st=this.state,visible=L.filter(l=>this.matches(l));
+    const go=v=>()=>this.setState({view:v,tip:null});
+    const counts=s=>L.filter(l=>l.state===s).length;
+    const tabs=[['sessions','sessions',SESSIONS.length],['table','table',L.length],['map','map',''],['rules','rules',PROJECTS.length],['term','term','']].map(([k,label,count])=>({label,count,go:go(k),line:st.view===k?'var(--fg)':'transparent',color:st.view===k?'var(--fg)':'var(--dim)'}));
+    const stateFilters=STATES.map(s=>{const on=st.states.has(s),any=st.states.size>0;return {label:s,count:counts(s),swatch:this.col(s),color:on?'var(--fg)':'var(--dim)',border:on?this.col(s):'var(--line)',bg:on?'var(--sel)':'transparent',opacity:any&&!on?.5:1,toggle:()=>this.setState(x=>{const n=new Set(x.states);n.has(s)?n.delete(s):n.add(s);return {states:n}})}});
+    const sessionList=SESSIONS.map(s=>{const ls=L.filter(l=>l.owner===s.id);const worst=STATES.slice().reverse().find(x=>ls.some(l=>l.state===x))||'ok';
+      const stc=STATES.filter(x=>ls.some(l=>l.state===x)&&x!=='ok').map(x=>({label:x,n:ls.filter(l=>l.state===x).length,color:this.col(x)}));
+      return {short:s.tool==='claude'?this.short(s.id):s.id,tool:s.tool==='claude'?'claude code':s.tool,where:s.project!=='—'?`${s.project} · W${s.W}`:s.cwd,count:ls.length,alive:s.pid?`pid ${s.pid}`:(s.ended?'ended '+s.ended:''),states:stc,worstColor:this.col(worst),bg:st.sel===s.id?'var(--sel)':'transparent',select:()=>this.setState({sel:s.id})}});
+    const selS=this.sessOf(st.sel)||SESSIONS[0];const pr=PROJECTS.find(p=>p.name===selS.project);
+    const sel={id:selS.tool==='claude'?selS.id:selS.id,tool:selS.tool==='claude'?'claude code':selS.tool,pidText:selS.pid?`pid ${selS.pid} · started ${selS.started}`:(selS.ended?`pid gone · started ${selS.started}, ended ${selS.ended}`:'—'),projectText:selS.project,W:selS.W,block:pr?`${10000+1000*pr.P+100*selS.W}–${10000+1000*pr.P+100*selS.W+99}`:'—',cwd:selS.cwd,cwdColor:selS.cwdMissing?'var(--orphan)':'var(--fg)',cwdNote:selS.cwdMissing?'(missing — worktree removed)':'',how:selS.how};
+    const selLeases=visible.filter(l=>l.owner===selS.id).map(l=>this.rowOf(l));
+    const groups=PROJECTS.filter(p=>visible.some(l=>l.project===p.name)).map(p=>({name:p.name,P:p.P,range:`${10000+1000*p.P}–${10000+1000*p.P+999}`,path:p.path,rows:visible.filter(l=>l.project===p.name).sort((a,b)=>a.W-b.W||a.port-b.port).map(l=>this.rowOf(l))}));
+    const byPort=Object.fromEntries(L.map(l=>[l.port,l]));
+    const mapRows=Array.from({length:30},(_,P)=>{const p=PROJECTS[P];const base=10000+1000*P;const Ws=[0];if(p)L.filter(l=>l.project===p.name&&l.W>0).forEach(l=>{if(!Ws.includes(l.W))Ws.push(l.W)});Ws.sort();
+      const groups=Ws.map(W=>{const cells=Array.from({length:10},(_,R)=>{const port=base+100*W+R;return this.cell(byPort[port],port,p)});
+        const ex=p&&p.extras?Object.entries(p.extras).map(([n,R])=>{const port=base+100*W+R;return this.cell(byPort[port],port,p,n)}):[];
+        return {W,cells,hasExtras:ex.length>0,extraCount:ex.length,extras:ex}});
+      const dim=!p||!L.some(l=>l.project===p.name&&l.kind!=='declared'&&l.kind!=='shared');
+      return {P:String(P).padStart(2,'0'),name:p?p.name:'—',range:p?`${base}`:'',nameColor:p?'var(--fg)':'var(--faint)',opacity:p?(dim?.6:1):.35,groups}});
+    const legend=[...STATES.map(s=>({label:s,bg:HATCH.has(s)?`repeating-linear-gradient(135deg,var(--${s}) 0 2px,transparent 2px 5px)`:`var(--${s})`})),{label:'free',bg:'var(--empty)'}];
+    const pct=p=>((p-1024)/(9999-1024)*100).toFixed(2)+'%';
+    const legacyBands=[{left:pct(4000),width:(1000/8975*100).toFixed(2)+'%',title:'4000–4999 portless'}];
+    const decl=new Map();PROJECTS.forEach(p=>p.declared.forEach(d=>{if(!decl.has(d))decl.set(d,[]);decl.get(d).push(p.name)}));
+    const legacyTicks=[];const seen=new Set();
+    L.filter(l=>l.port>=1024&&l.port<10000).forEach(l=>{seen.add(l.port);const c=this.cell(l,l.port,PROJECTS.find(p=>p.name===l.project));legacyTicks.push({left:pct(l.port),top:'6px',height:'32px',bg:HATCH.has(l.state)?`var(--${l.state})`:c.bg,open:c.open,enter:c.enter,move:c.move,leave:c.leave})});
+    decl.forEach((names,port)=>{if(seen.has(port))return;const show=e=>this.setState({tip:{x:e.clientX+12,y:e.clientY+14,port,state:'declared',color:'var(--dim)',line1:'declared by '+names.join(', '),line2:'nothing bound'}});legacyTicks.push({left:pct(port),top:'22px',height:'16px',bg:'var(--reserved)',open:()=>{},enter:show,move:show,leave:()=>this.setState({tip:null})})});
+    const legacyLabels=[1024,3000,4000,5000,5432,6379,8000,9090,9999].map(p=>({left:pct(p),text:String(p)}));
+    const roleCards=ROLES.map((n,i)=>({code:String(i).padStart(2,'0'),name:n}));
+    const sharedPorts=[['grafana',3000],['langfuse',3001],['tempo',3200],['otlp-grpc',4317],['otlp-http',4318],['metrics',8888],['prometheus',9090]].map(([name,port])=>({name,port,open:()=>this.setState({drawer:port,copied:false})}));
+    const policyRows=PROJECTS.map(p=>({P:p.P,name:p.name,range:`${10000+1000*p.P}–${10000+1000*p.P+999}`,path:p.path,declared:p.declared.join(', ')||'—',extras:p.extras?Object.entries(p.extras).map(([k,v])=>`${k}=${v}`).join(' '):'—'}));
+    // terminal
+    let termLs='';groups.forEach(g=>{termLs+=`\n${g.name}  P=${g.P}  ${g.range}\n`;g.rows.forEach(r=>{termLs+=`  W${r.W}  ${pad(r.port,6)}${pad(r.role,11)}${pad(r.state,10)}${pad(r.holder,38)}${r.session}\n`})});termLs+='\n';
+    const dl=byPort[st.drawer]||byPort[17101];const dd=this.decode(dl.port);
+    const termWho=`\n  port     ${dl.port}  (${dd.text})\n  lease    ${dl.kind} · ${dl.project} · W${dl.W} · ${dl.role}\n  owner    ${dl.owner?(this.sessOf(dl.owner)?.tool==='claude'?'session '+this.short(dl.owner)+'…':dl.owner):'none'}\n  holder   ${dl.holder}\n  state    ${dl.state}\n${dl.how.map(h=>'  because  '+h).join('\n')}\n\n`;
+    const termCheck='\n'+STATES.map(s=>`  ${pad(s,10)}${counts(s)}`).join('\n')+`\n  ${L.length} ports · ${SESSIONS.filter(s=>s.pid).length} live sessions · reconcile 74 ms (cached 1 s) · exit 0\n`;
+    // drawer
+    let d={},drawerOpen=!!(st.drawer&&byPort[st.drawer]);
+    if(drawerOpen){const l=byPort[st.drawer];const dec=this.decode(l.port);const s=this.sessOf(l.owner);const adv=ADVICE[l.state]||['',''];const cmd=(adv[1]||'').replace('{p}',l.port);
+      const url=l.holder!=='—'?`http://localhost:${l.port}`:'';
+      d={port:l.port,state:l.state,color:this.col(l.state),P:dec.P,W:dec.W,R:typeof dec.R==='number'?String(dec.R).padStart(2,'0'):dec.R,decoded:dec.text,lease:`${l.kind} · ${l.project} · W${l.W} · ${l.role}`,owner:l.owner?(s&&s.tool==='claude'?`session ${this.short(l.owner)}… (pid ${s.pid||'gone'})`:l.owner):'none',holder:l.holder,holderColor:l.state==='conflict'||l.state==='squatter'?this.col(l.state):'var(--fg)',cwd:l.cwd,created:l.age==='boot'||l.age==='—'?l.age:l.age+' ago',expires:l.expires||(l.kind==='dynamic'?'8 h':'none (liveness beats wall-clock)'),url:url||'#',urlText:url?url.replace('http://',''):'—',how:l.how,advice:adv[0],hasCmd:!!cmd,cmd,
+        json:JSON.stringify({port:l.port,state:l.state,lease:{project:l.project,worktree:l.W,role:l.role,kind:l.kind,owner:l.owner?{session_id:this.short(l.owner),tool:s?s.tool:null,pid:s?s.pid:null}:null,cwd:l.cwd},live:{holder:l.holder,pid:l.hpid}},null,1)}}
+    const summary=`${visible.length} of ${L.length} ports · ${counts('conflict')+counts('squatter')} need attention · ${SESSIONS.filter(s=>s.pid).length} live sessions`;
+    const theme=st.theme||this.props.theme||'dark';
+    return {tabs,query:st.query,setQuery:e=>this.setState({query:e.target.value}),ago:st.poll?`${st.ago}s ago`:'manual',pollDot:st.poll?'var(--ok)':'var(--dim)',pollAnim:st.poll?'pulse 2s ease-in-out infinite':'none',pollColor:st.poll?'var(--ok)':'var(--dim)',pollLabel:st.poll?'on':'off',togglePoll:()=>this.setState(s=>({poll:!s.poll})),refresh:()=>this.setState({ago:0}),toggleTheme:()=>this.setState({theme:theme==='dark'?'light':'dark'}),themeGlyph:theme==='dark'?'☾':'☼',
+      stateFilters,projectFilter:st.project,setProject:e=>this.setState({project:e.target.value}),projectOptions:PROJECTS.map(p=>({name:p.name,label:`${p.name} (P=${p.P})`})),hasFilters:!!(st.states.size||st.project||st.query),clearFilters:()=>this.setState({states:new Set(),project:'',query:''}),summary,
+      isSessions:st.view==='sessions',isTable:st.view==='table',isMap:st.view==='map',isRules:st.view==='rules',isTerm:st.view==='term',
+      sessionList,sel,selLeases,selEmpty:selLeases.length===0,groups,mapRows,legend,legacyBands,legacyTicks,legacyLabels,hideTip:()=>this.setState({tip:null}),roleCards,sharedPorts,policyRows,termLs,termWho,termWhoPort:dl.port,termCheck,
+      drawerOpen,d,closeDrawer:()=>this.setState({drawer:null}),copyLabel:st.copied?'copied':'copy',copyCmd:()=>{navigator.clipboard&&navigator.clipboard.writeText(d.cmd);this.setState({copied:true});setTimeout(()=>this.setState({copied:false}),1500)},
+      tipOn:!!st.tip,tip:st.tip?{...st.tip,x:st.tip.x+'px',y:st.tip.y+'px'}:{}};
+  }
+}
+</script>
+</body>
+</html>

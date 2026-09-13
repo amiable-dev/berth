@@ -1,0 +1,234 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { flagBool, flagString, type ParsedArgs } from '../args.js';
+import { resolveContext } from '../context.js';
+import {
+  allLeases,
+  compact,
+  markWorktreeRemoved,
+  pruneWorktreeSlot,
+  worktreeSlots,
+} from '../ledger.js';
+import { isHttpRole, loadPolicy, type Policy, projectByName } from '../policy.js';
+import { atomicWriteSync, run } from '../util.js';
+import { rolePorts } from './allocate.js';
+import type { IO } from './query.js';
+
+export async function cmdCompact(args: ParsedArgs, io: IO): Promise<number> {
+  const r = await compact({ deadlineMs: 5000 });
+  io.out(
+    flagBool(args.flags, 'json')
+      ? JSON.stringify(r, null, 2)
+      : `folded ${r.folded} claim${r.folded === 1 ? '' : 's'}${r.dropped.length ? `; dropped ${r.dropped.length} (see compact.log)` : ''}`,
+  );
+  return 0;
+}
+
+interface LaunchConfig {
+  name: string;
+  runtimeExecutable?: string;
+  runtimeArgs?: string[];
+  port?: number;
+  env?: Record<string, string>;
+  cwd?: string;
+  [k: string]: unknown;
+}
+interface LaunchJson {
+  version?: string;
+  configurations?: LaunchConfig[];
+  [k: string]: unknown;
+}
+
+export function buildLaunchConfigs(
+  policy: Policy,
+  projectName: string,
+  W: number,
+  pkgScripts: Record<string, string>,
+  dir: string,
+): LaunchConfig[] {
+  const project = projectByName(policy, projectName);
+  if (!project) return [];
+  const ports = rolePorts(policy, project, W);
+  const web = ports.find((p) => p.role === 'web');
+  const api = ports.find((p) => p.role === 'api');
+  const out: LaunchConfig[] = [];
+  const env: Record<string, string> = {};
+  for (const p of ports) env[p.env] = String(p.port);
+  const pick = (names: string[]) => names.find((n) => n in pkgScripts);
+  const devScript = pick(['dev', 'start', 'serve']);
+  if (web && devScript) {
+    out.push({
+      name: `${project.name} web (berth W${W})`,
+      runtimeExecutable: 'npm',
+      runtimeArgs: ['run', devScript],
+      port: web.port,
+      env: { ...env, PORT: String(web.port) },
+      cwd: dir,
+    });
+  }
+  const apiScript = pick(['dev:api', 'api', 'start:api']);
+  if (api && apiScript) {
+    out.push({
+      name: `${project.name} api (berth W${W})`,
+      runtimeExecutable: 'npm',
+      runtimeArgs: ['run', apiScript],
+      port: api.port,
+      env: { ...env, PORT: String(api.port) },
+      cwd: dir,
+    });
+  }
+  if (out.length === 0 && web) {
+    out.push({
+      name: `${project.name} web (berth W${W})`,
+      runtimeExecutable: 'npm',
+      runtimeArgs: ['run', 'dev'],
+      port: web.port,
+      env: { ...env, PORT: String(web.port) },
+      cwd: dir,
+    });
+  }
+  return out;
+}
+
+export async function cmdLaunchJson(args: ParsedArgs, io: IO): Promise<number> {
+  const policy = loadPolicy();
+  const cwd = flagString(args.flags, 'cwd') ?? process.cwd();
+  const ctx = await resolveContext(policy, cwd, { assign: true });
+  if (!ctx.project || ctx.W === null) {
+    io.err(`${cwd} is not a known project (or its worktree has no slot)`);
+    return 1;
+  }
+  const dir = ctx.worktreePath ?? ctx.project.path;
+  let scripts: Record<string, string> = {};
+  const pkg = path.join(dir, 'package.json');
+  if (existsSync(pkg)) {
+    try {
+      scripts =
+        (JSON.parse(readFileSync(pkg, 'utf8')) as { scripts?: Record<string, string> }).scripts ??
+        {};
+    } catch {
+      scripts = {};
+    }
+  }
+  const configs = buildLaunchConfigs(policy, ctx.project.name, ctx.W, scripts, dir);
+  const file = path.join(dir, '.claude', 'launch.json');
+  let existing: LaunchJson = { version: '0.0.1', configurations: [] };
+  if (existsSync(file)) {
+    try {
+      existing = JSON.parse(readFileSync(file, 'utf8')) as LaunchJson;
+    } catch {
+      io.err(`${file} is not valid JSON; not touching it`);
+      return 1;
+    }
+  }
+  const kept = (existing.configurations ?? []).filter((c) => !/\(berth W\d\)$/.test(c.name));
+  const merged: LaunchJson = {
+    ...existing,
+    version: existing.version ?? '0.0.1',
+    configurations: [...kept, ...configs],
+  };
+  const text = `${JSON.stringify(merged, null, 2)}\n`;
+  if (flagBool(args.flags, 'write')) {
+    atomicWriteSync(file, text, { mode: 0o644 });
+    io.out(
+      `wrote ${file} (${configs.length} berth configuration${configs.length === 1 ? '' : 's'})`,
+    );
+  } else io.out(text);
+  return 0;
+}
+
+export function aliasName(project: string, role: string, worktreeName?: string): string {
+  const base = role === 'web' ? project : `${project}-${role}`;
+  return worktreeName ? `${worktreeName.replace(/[^A-Za-z0-9-]+/g, '-')}.${base}` : base;
+}
+
+export async function cmdNames(args: ParsedArgs, io: IO): Promise<number> {
+  const policy = loadPolicy();
+  const sub = args.positional[0] ?? 'list';
+  if (policy.names.provider === 'none') {
+    io.out('names.provider = "none" in policy; nothing to do');
+    return 0;
+  }
+  const probe = await run('portless', ['--version'], { timeoutMs: 4000 });
+  if (probe.missing) {
+    io.err('portless is not installed (npm i -g portless); names sync disabled');
+    return 1;
+  }
+  if (sub === 'list') {
+    const r = await run('portless', ['list'], { timeoutMs: 6000 });
+    io.out(r.stdout.trim() || r.stderr.trim() || '(no routes)');
+    return r.code === 0 ? 0 : 1;
+  }
+  if (sub !== 'sync') {
+    io.err('usage: berth names list|sync [--all] [--dry-run]');
+    return 2;
+  }
+  const cwd = flagString(args.flags, 'cwd') ?? process.cwd();
+  const ctx = await resolveContext(policy, cwd, { assign: false });
+  const leases = allLeases().filter(
+    (l) => (flagBool(args.flags, 'all') || l.project === ctx.project?.name) && isHttpRole(l.role),
+  );
+  if (leases.length === 0) {
+    io.out('no http leases to alias');
+    return 0;
+  }
+  const dry = flagBool(args.flags, 'dry-run');
+  for (const l of leases) {
+    const slot =
+      l.worktree > 0 ? worktreeSlots(l.project).find((s) => s.W === l.worktree)?.name : undefined;
+    const name = aliasName(l.project, l.role, slot);
+    if (dry) {
+      io.out(`portless alias ${name} ${l.port}`);
+      continue;
+    }
+    const r = await run('portless', ['alias', name, String(l.port)], { timeoutMs: 8000 });
+    io.out(
+      `${r.code === 0 ? 'ok  ' : 'fail'} ${name}.localhost -> ${l.port}${r.code === 0 ? '' : `: ${(r.stderr || r.stdout).trim()}`}`,
+    );
+  }
+  return 0;
+}
+
+export async function cmdWorktrees(args: ParsedArgs, io: IO): Promise<number> {
+  const policy = loadPolicy();
+  const sub = args.positional[0] ?? 'list';
+  const projectName = flagString(args.flags, 'project');
+  if (sub === 'list') {
+    for (const p of Object.values(policy.projects).sort((a, b) => a.P - b.P)) {
+      if (projectName && p.name !== projectName) continue;
+      const slots = worktreeSlots(p.name);
+      if (slots.length === 0) continue;
+      io.out(`${p.name}`);
+      for (const s of slots)
+        io.out(
+          `  W${s.W}  ${s.name}  ${s.path}${s.removed ? `  (removed ${s.removed})` : existsSync(s.path) ? '' : '  (path missing)'}`,
+        );
+    }
+    return 0;
+  }
+  const W = Number(flagString(args.flags, 'w'));
+  if (!projectName || !Number.isInteger(W) || W < 1) {
+    io.err(
+      'usage: berth worktrees list | remove --project <name> --w <n> | prune --project <name> --w <n>',
+    );
+    return 2;
+  }
+  if (sub === 'remove') {
+    io.out(
+      markWorktreeRemoved(projectName, W)
+        ? `W${W} of ${projectName} marked removed (tombstone kept)`
+        : 'no such slot',
+    );
+    return 0;
+  }
+  if (sub === 'prune') {
+    io.out(
+      pruneWorktreeSlot(projectName, W)
+        ? `W${W} of ${projectName} pruned; the number may be reused`
+        : 'no such slot',
+    );
+    return 0;
+  }
+  io.err('unknown worktrees subcommand');
+  return 2;
+}

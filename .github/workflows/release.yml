@@ -1,0 +1,157 @@
+# Release: publish @amiable-dev/berth to npm and create the GitHub Release.
+#
+# Triggered by pushing a tag that starts with "v". Publishing uses npm trusted
+# publishing (OIDC): the publish job requests an id-token and npm exchanges it
+# for a short-lived credential, so there is no NPM_TOKEN secret anywhere in
+# this repository and every release carries a provenance attestation.
+#
+# The trusted publisher must be configured once on npmjs.com (owner
+# amiable-dev, repository berth, workflow release.yml, environment npm); see
+# CONTRIBUTING.md, "One-time setup: npm trusted publishing".
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Least-privilege default; jobs below elevate only the scopes they need.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Full check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify the tag matches package.json
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+          echo "Releasing $PKG_VERSION"
+
+      - name: Lint, typecheck, test, build
+        run: npm run check
+
+      - name: Smoke test the bundle
+        run: |
+          node dist/berth.js --version
+          node dist/berth.js --help
+
+  publish:
+    name: Publish to npm
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@amiable-dev/berth
+    permissions:
+      contents: read
+      id-token: write  # OIDC token for npm trusted publishing and provenance
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later; the npm bundled with
+      # Node 22 may be older.
+      - name: Update npm
+        run: |
+          npm install -g npm@11
+          npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `prepack` runs the build, so the bundle is produced here from the
+      # checked-out tag. Prerelease tags (v1.2.0-rc.1) go to the `next`
+      # dist-tag so a plain `npm install @amiable-dev/berth` never resolves
+      # to one.
+      - name: Publish with provenance
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          case "$VERSION" in
+            *-*) npm publish --provenance --access public --tag next ;;
+            *)   npm publish --provenance --access public ;;
+          esac
+
+  release:
+    name: GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # to create the release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The release notes are this version's CHANGELOG section: everything
+      # from its "## [x.y.z]" heading up to the next "## [" heading or the
+      # link references at the end of the file.
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            /^## \[/ { if (found) exit; if (index($0, "## [" ver "]") == 1) found = 1; next }
+            /^\[[^]]+\]: / { if (found) exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ -s release-notes.md ]; then
+            echo "Release notes:"
+            cat release-notes.md
+          else
+            echo "::warning::No CHANGELOG.md section found for $VERSION; falling back to generated notes"
+          fi
+
+      # No third-party action here: gh targets the repo directly, which keeps
+      # this privileged job free of anything but the checkout.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          PRERELEASE=""
+          case "$VERSION" in *-*) PRERELEASE="--prerelease" ;; esac
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping creation"
+          elif [ -s release-notes.md ]; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "berth $TAG" --notes-file release-notes.md $PRERELEASE
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "berth $TAG" --generate-notes $PRERELEASE
+          fi

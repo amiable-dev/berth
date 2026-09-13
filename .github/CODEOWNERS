@@ -1,0 +1,18 @@
+# CODEOWNERS for berth
+# Every change is reviewed by a maintainer. The entries below make GitHub
+# request that review automatically and make the security-critical paths
+# explicit.
+
+# Default owner for everything in the repo
+* @amiable-dev
+
+# CI/CD workflows and repository automation: security critical
+.github/ @amiable-dev
+
+# Package manifest, lockfile and build script: what gets published
+package.json @amiable-dev
+package-lock.json @amiable-dev
+scripts/ @amiable-dev
+
+# Recorded decisions: compatibility promises
+docs/adr/ @amiable-dev

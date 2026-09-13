@@ -18,6 +18,7 @@ ttl_hours = 8
 ranges = ["0-1023", "4000-4999", "49152-65535"]   # privileged, portless wrapper mode, macOS ephemeral
 ports  = [5000, 7000]                              # macOS AirPlay receiver (ControlCenter)
 lint   = [11211, 11434, 15672, 16686, 19999, 27017] # well-known defaults inside the block range
+ignore_processes = ["Code Helper (Plugin)", "Code - Insiders Helper (Plugin)", "Cursor Helper (Plugin)", "rapportd", "sharingd", "identityservicesd", "tailscaled"] # bind random loopback ports; hidden unless they collide with a lease
 
 [shared.observability]
 owner = "skills-telemetry"

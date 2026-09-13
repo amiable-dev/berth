@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0}
+body{background:#0b0d10;color:#d7dce3;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;-webkit-font-smoothing:antialiased;
+--bg:#0b0d10;--panel:#10131a;--panel2:#161a22;--line:#232932;--fg:#d7dce3;--dim:#7f8994;--faint:#3b434e;--sel:#1a2130;
+--ok:#3fd68b;--idle:#b08d3c;--stale:#f2b135;--orphan:#e0812a;--unmanaged:#9aa5b1;--squatter:#ff6b5d;--conflict:#ff3b3b;--drift:#4ea6ff;--reserved:#5b6570;--empty:#141820}
+a{color:#4ea6ff;text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</helmet>
+<div style="max-width:1100px;margin:0 auto;padding:40px 32px 80px;display:flex;flex-direction:column;gap:48px">
+  <header style="border-bottom:1px solid var(--line);padding-bottom:20px">
+    <div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.1em">design pack · v0.1 · 2026-09-13</div>
+    <h1 style="margin:6px 0 8px;font-size:28px;font-weight:600;letter-spacing:-.01em">berth ui</h1>
+    <p style="margin:0;color:var(--dim);max-width:640px;text-wrap:pretty">Instrument-panel language for an advisory port registry. Monospace everywhere, hairline rules, near-black ground, phosphor state colours. Information, not gates: the UI names holders and suggests commands; it never kills, blocks or reassigns.</p>
+    <div style="display:flex;gap:16px;margin-top:14px;font-size:11px"><a href="Berth Dashboard.dc.html">→ prototype: Berth Dashboard</a><span style="color:var(--faint)">source: docs/DESIGN.md §5.4, §5.8</span></div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">01 · principles</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)">
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:4px">The number is the rule</div><div style="color:var(--dim)">Every port is decodable: 10000 + 1000·P + 100·W + R. The UI always shows the decode, never asks the user to look it up.</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:4px">Dense by default</div><div style="color:var(--dim)">Thirty sessions × fifty ports must fit one screen beside a terminal. 12px body, 22px rows, no card padding.</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:4px">Colour means state, nothing else</div><div style="color:var(--dim)">Eight state hues and one link blue. Brand is type and rhythm, not colour. Hatching doubles the signal for the four states that need a human.</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:4px">Always say how we know</div><div style="color:var(--dim)">Every state is backed by its evidence: claim file, lsof, compose label, ps -E marker. Attribution is the product.</div></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">02 · colour tokens</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="border:1px solid var(--line);background:#0b0d10;color:#d7dce3">
+        <div style="padding:8px 12px;border-bottom:1px solid #232932;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#7f8994">dark (default)</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#232932">
+          <sc-for list="{{ darkSurfaces }}" as="t" hint-placeholder-count="8"><div style="background:#0b0d10;padding:10px 12px"><div style="height:28px;background:{{ t.hex }};border:1px solid #232932;margin-bottom:6px"></div><div style="font-size:11px">{{ t.name }}</div><div style="font-size:10px;color:#7f8994">{{ t.hex }}</div></div></sc-for>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line);background:#f2f2ee;color:#1b1e22">
+        <div style="padding:8px 12px;border-bottom:1px solid #d5d5cf;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#646c75">light</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#d5d5cf">
+          <sc-for list="{{ lightSurfaces }}" as="t" hint-placeholder-count="8"><div style="background:#f2f2ee;padding:10px 12px"><div style="height:28px;background:{{ t.hex }};border:1px solid #d5d5cf;margin-bottom:6px"></div><div style="font-size:11px">{{ t.name }}</div><div style="font-size:10px;color:#646c75">{{ t.hex }}</div></div></sc-for>
+        </div>
+      </div>
+    </div>
+    <div style="color:var(--dim);font-size:11px;max-width:720px;text-wrap:pretty">Surfaces are cool near-blacks (chroma ≤ 0.02). Tokens are CSS custom properties on <code>body</code>; the light theme is <code>body[data-theme="light"]</code> swapping the same names, so components never know which theme they are in. Text on ground is ≥ 7:1 in both themes; dim text ≥ 4.5:1.</div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">03 · state system · eight states</h2>
+    <div style="border:1px solid var(--line)">
+      <div style="display:grid;grid-template-columns:110px 72px 72px 1fr 1fr 150px;gap:0 12px;padding:6px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em"><span>chip</span><span>dark</span><span>light</span><span>meaning</span><span>advisory response</span><span>map cell</span></div>
+      <sc-for list="{{ states }}" as="s" hint-placeholder-count="8">
+        <div style="display:grid;grid-template-columns:110px 72px 72px 1fr 1fr 150px;gap:0 12px;padding:9px 12px;border-bottom:1px solid var(--line);align-items:center">
+          <span><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:{{ s.dark }};border:1px solid {{ s.dark }};padding:1px 5px">{{ s.name }}</span></span>
+          <span style="font-size:10px;color:var(--dim)">{{ s.dark }}</span>
+          <span style="font-size:10px;color:var(--dim)">{{ s.light }}</span>
+          <span style="font-size:11px">{{ s.meaning }}</span>
+          <span style="font-size:11px;color:var(--dim)">{{ s.response }}</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:14px;background:{{ s.cell }};border:1px solid {{ s.dark }};box-sizing:border-box"></span><span style="font-size:10px;color:var(--dim)">{{ s.cellNote }}</span></span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;color:var(--dim);font-size:11px">
+      <div><span style="color:var(--fg)">Traffic-light logic.</span> Green = as agreed. Amber family = leased but not right (idle, stale, orphan), darker and more orange as the owner gets further from alive. Red family = another party is involved (squatter, conflict). Blue = configuration, not runtime (drift). Grey = nobody asked (unmanaged).</div>
+      <div><span style="color:var(--fg)">Chip anatomy.</span> 10px, uppercase, .06em tracking, 1px border in the state colour, no fill. Text is the state word exactly as <code>berth check</code> prints it, so terminal and UI vocabulary are identical.</div>
+      <div><span style="color:var(--fg)">Idle is dimmed, not coloured.</span> Rows at 55% opacity; the chip stays legible. Idle is the one state that should recede.</div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">04 · typography</h2>
+    <div style="border:1px solid var(--line);background:var(--panel)">
+      <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">JetBrains Mono · 400 / 500 / 600 · one family, six sizes</div>
+      <sc-for list="{{ type }}" as="t" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:140px 1fr 260px;gap:16px;align-items:baseline;padding:10px 12px;border-bottom:1px solid var(--line)">
+          <span style="color:var(--dim);font-size:10px">{{ t.spec }}</span>
+          <span style="font-size:{{ t.size }};font-weight:{{ t.weight }};letter-spacing:{{ t.tracking }};text-transform:{{ t.transform }};color:{{ t.color }}">{{ t.sample }}</span>
+          <span style="color:var(--dim);font-size:11px">{{ t.use }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="color:var(--dim);font-size:11px;max-width:720px">Port numbers are always weight 600 so they read as the primary key in any row. Paths and holders are 400. Nothing below 10px, nothing above 28px; there are no display sizes because there are no marketing surfaces.</div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">05 · range-map cell specs</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="border:1px solid var(--line);background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="color:var(--faint);font-size:9px;width:18px">W0</span>
+          <div style="display:flex;gap:2px">
+            <sc-for list="{{ demoCells }}" as="c" hint-placeholder-count="10"><div style="width:22px;height:14px;background:{{ c.bg }};border:1px solid {{ c.border }};box-sizing:border-box"></div></sc-for>
+          </div>
+          <span style="color:var(--faint);font-size:9px">+3 extras</span>
+          <div style="display:flex;gap:2px"><div style="width:12px;height:14px;background:var(--ok);border:1px solid var(--ok);box-sizing:border-box"></div><div style="width:12px;height:14px;background:var(--empty);border:1px solid var(--line);box-sizing:border-box"></div><div style="width:12px;height:14px;background:var(--empty);border:1px solid var(--line);box-sizing:border-box"></div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:11px;color:var(--dim)">
+          <span style="color:var(--fg)">row</span><span>one per P (00–29), 22px tall, hairline below. Unassigned P at 35% opacity; assigned but nothing live at 60%.</span>
+          <span style="color:var(--fg)">group</span><span>one per worktree that has a lease; W0 always drawn. 14px gap between groups, 9px "W1" label.</span>
+          <span style="color:var(--fg)">cell</span><span>22×14px, 2px gap, roles 00–09 left to right. Extras (10–99) are 12px wide and only drawn when the policy names them.</span>
+          <span style="color:var(--fg)">fill</span><span>solid state colour; hatched (135°, 2px on / 3px off) for squatter, stale, conflict, orphan; free = --empty with --line border.</span>
+          <span style="color:var(--fg)">hover</span><span>1px --fg outline + tooltip: port, chip, project · W · role, holder · session.</span>
+          <span style="color:var(--fg)">click</span><span>opens the port drawer (berth who). Free cells do nothing.</span>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line);background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:12px">
+        <div style="position:relative;height:56px;border:1px solid var(--line);background:var(--bg)">
+          <div style="position:absolute;top:0;bottom:0;left:33.2%;width:11.1%;background:repeating-linear-gradient(135deg,var(--faint) 0 1px,transparent 1px 6px);opacity:.5"></div>
+          <div style="position:absolute;left:22%;top:6px;width:3px;height:32px;background:var(--ok)"></div>
+          <div style="position:absolute;left:22.3%;top:6px;width:3px;height:32px;background:var(--ok)"></div>
+          <div style="position:absolute;left:44.3%;top:6px;width:3px;height:32px;background:var(--reserved)"></div>
+          <div style="position:absolute;left:49.1%;top:6px;width:3px;height:32px;background:var(--ok)"></div>
+          <div style="position:absolute;left:49.2%;top:6px;width:3px;height:32px;background:var(--unmanaged)"></div>
+          <div style="position:absolute;left:46.2%;top:22px;width:3px;height:16px;background:var(--reserved)"></div>
+          <div style="position:absolute;left:77.7%;top:22px;width:3px;height:16px;background:var(--reserved)"></div>
+          <div style="position:absolute;left:89.9%;top:6px;width:3px;height:32px;background:var(--ok)"></div>
+          <span style="position:absolute;bottom:2px;left:0;font-size:9px;color:var(--faint);padding-left:2px">1024</span>
+          <span style="position:absolute;bottom:2px;left:49.1%;transform:translateX(-50%);font-size:9px;color:var(--faint)">5432</span>
+          <span style="position:absolute;bottom:2px;right:2px;font-size:9px;color:var(--faint)">9999</span>
+        </div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:11px;color:var(--dim)">
+          <span style="color:var(--fg)">strip</span><span>1024–9999 linear, 56px tall, always visible below the grid. left = (port − 1024) / 8975.</span>
+          <span style="color:var(--fg)">tick</span><span>3px wide. Tall (32px, from top) = live listener, coloured by state. Short (16px, centred) = declared only, --reserved grey.</span>
+          <span style="color:var(--fg)">band</span><span>hatched --faint band for reserved ranges (portless 4000–4999). AirPlay 5000/7000 are system ticks.</span>
+          <span style="color:var(--fg)">labels</span><span>9px --faint at the strip's bottom edge for landmark ports (3000, 5432, 8000, 9090 …).</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">06 · component inventory</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+      <div style="border:1px solid var(--line);background:var(--panel)">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">header · 40px</div>
+        <div style="display:flex;align-items:center;gap:14px;height:40px;padding:0 12px;border-bottom:1px solid var(--line);background:var(--panel)">
+          <span style="font-weight:600;font-size:13px;letter-spacing:.04em">berth</span><span style="color:var(--dim);font-size:11px">ui :10000</span>
+          <span style="border-bottom:2px solid var(--fg);height:40px;display:flex;align-items:center;padding:0 10px">sessions <span style="color:var(--dim);margin-left:6px;font-size:10px">9</span></span>
+          <span style="color:var(--dim);padding:0 10px">table</span>
+          <div style="flex:1"></div>
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--ok)"></span><span style="color:var(--dim);font-size:11px">checked 2s ago</span>
+          <span style="border:1px solid var(--line);height:22px;padding:0 8px;display:flex;align-items:center;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ok)">poll on</span>
+        </div>
+        <div style="padding:10px 12px;color:var(--dim);font-size:11px">Wordmark + bound port, view tabs with counts, search, poll indicator (pulsing dot at 2s), refresh, theme toggle. Tabs use a 2px underline, no fill.</div>
+      </div>
+      <div style="border:1px solid var(--line);background:var(--panel)">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">filter bar · 32px</div>
+        <div style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-bottom:1px solid var(--line)">
+          <span style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">state</span>
+          <span style="display:flex;align-items:center;gap:5px;border:1px solid var(--line);height:20px;padding:0 7px;font-size:10px;color:var(--dim)"><span style="width:7px;height:7px;background:var(--ok)"></span>ok <span>19</span></span>
+          <span style="display:flex;align-items:center;gap:5px;border:1px solid var(--conflict);background:var(--sel);height:20px;padding:0 7px;font-size:10px"><span style="width:7px;height:7px;background:var(--conflict)"></span>conflict <span style="color:var(--dim)">1</span></span>
+          <span style="display:flex;align-items:center;gap:5px;border:1px solid var(--line);height:20px;padding:0 7px;font-size:10px;color:var(--dim);opacity:.5"><span style="width:7px;height:7px;background:var(--drift)"></span>drift <span>2</span></span>
+          <span style="color:var(--drift);font-size:10px">clear</span>
+        </div>
+        <div style="padding:10px 12px;color:var(--dim);font-size:11px">Multi-select state chips with counts; unselected chips fall to 50% when any is active. Project select. Filters apply to every view including the terminal mock.</div>
+      </div>
+      <div style="border:1px solid var(--line);background:var(--panel)">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">session row · left rail</div>
+        <div style="display:grid;grid-template-columns:8px 1fr auto;gap:0 10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--sel)">
+          <span style="width:8px;height:8px;margin-top:4px;background:var(--conflict)"></span>
+          <div><div style="display:flex;gap:8px;align-items:baseline"><span style="font-weight:600">7d2f91bc</span><span style="color:var(--dim);font-size:10px">claude code</span></div><div style="color:var(--dim);font-size:11px">chancery · W0</div><div style="display:flex;gap:6px;margin-top:3px"><span style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--idle);border:1px solid var(--idle);padding:0 4px;line-height:14px">idle 1</span></div></div>
+          <span style="color:var(--dim);font-size:11px;text-align:right">3<div style="font-size:10px">pid 5588</div></span>
+        </div>
+        <div style="padding:10px 12px;color:var(--dim);font-size:11px">8px square = worst state across the session's leases. Short session id (8 chars) is the display key; the full id lives in the detail pane. Humans and macOS appear as pseudo-sessions.</div>
+      </div>
+      <div style="border:1px solid var(--line);background:var(--panel)">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">lease row · 26px</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>
+          <tr><td style="padding:5px 12px;border-bottom:1px solid var(--line);font-weight:600">17101</td><td style="padding:5px 8px;border-bottom:1px solid var(--line)">api</td><td style="padding:5px 8px;border-bottom:1px solid var(--line)"><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--conflict);border:1px solid var(--conflict);padding:1px 5px">conflict</span></td><td style="padding:5px 8px;border-bottom:1px solid var(--line)">node 5623 (tsx watch)</td><td style="padding:5px 8px;border-bottom:1px solid var(--line);color:var(--dim)">0h 12m</td><td style="padding:5px 12px;border-bottom:1px solid var(--line)"><a href="#">localhost:17101</a></td></tr>
+          <tr style="opacity:.55"><td style="padding:5px 12px;border-bottom:1px solid var(--line);font-weight:600">17002</td><td style="padding:5px 8px;border-bottom:1px solid var(--line)">db</td><td style="padding:5px 8px;border-bottom:1px solid var(--line)"><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--idle);border:1px solid var(--idle);padding:1px 5px">idle</span></td><td style="padding:5px 8px;border-bottom:1px solid var(--line)">—</td><td style="padding:5px 8px;border-bottom:1px solid var(--line);color:var(--dim)">0h 31m</td><td style="padding:5px 12px;border-bottom:1px solid var(--line)"></td></tr>
+        </tbody></table>
+        <div style="padding:10px 12px;color:var(--dim);font-size:11px">Column order is fixed across views: port · role · state · live holder · kind/session · age · url. Hover = --sel background. Click = drawer. Whole row is the target.</div>
+      </div>
+      <div style="border:1px solid var(--line);background:var(--panel);grid-column:1/-1">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em">port drawer · 380px · berth who</div>
+        <div style="display:grid;grid-template-columns:380px 1fr">
+          <div style="border-right:1px solid var(--line)">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)"><span style="font-size:18px;font-weight:600">17101</span><span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--conflict);border:1px solid var(--conflict);padding:1px 6px">conflict</span><div style="flex:1"></div><span style="color:var(--dim)">×</span></div>
+            <div style="padding:12px 14px;border-bottom:1px solid var(--line)"><div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">decoded</div><div style="font-size:13px"><span style="color:var(--faint)">10000 +</span> <span style="color:var(--ok)">1000·7</span> <span style="color:var(--faint)">+</span> <span style="color:var(--drift)">100·1</span> <span style="color:var(--faint)">+</span> <span style="color:var(--stale)">01</span></div><div style="color:var(--dim);font-size:11px;margin-top:4px">project 7 (chancery) · worktree 1 · role 01 api</div></div>
+            <div style="padding:12px 14px;border-bottom:1px solid var(--line)"><div style="color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">advisory</div><div style="font-size:11px;color:var(--conflict);margin-bottom:8px">Lease owner differs from the live holder. Tell the owning session its belief is wrong.</div><div style="display:flex;border:1px solid var(--line);background:var(--bg)"><code style="flex:1;padding:6px 10px;font-size:11px">berth who 17101 --json</code><span style="border-left:1px solid var(--line);padding:6px 10px;font-size:10px;letter-spacing:.06em;text-transform:uppercase">copy</span></div></div>
+          </div>
+          <div style="padding:14px;color:var(--dim);font-size:11px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-content:start">
+            <span style="color:var(--fg)">header</span><span>18px/600 port, state chip, close.</span>
+            <span style="color:var(--fg)">decoded</span><span>the formula with P, W, R coloured green / blue / amber; the same three colours are used in the Rules view so the decode is learnable.</span>
+            <span style="color:var(--fg)">facts</span><span>lease · owner · live holder · cwd · created · expires · url. Live holder turns red when it disagrees with the lease.</span>
+            <span style="color:var(--fg)">how we know</span><span>one line per evidence source, in the order the reconciler consulted them.</span>
+            <span style="color:var(--fg)">advisory</span><span>state-coloured sentence + one copyable command. Footer always reads "berth never kills or reassigns. Exit code is always 0."</span>
+            <span style="color:var(--fg)">json</span><span>the exact <code>berth who --json</code> payload, 10px --dim. The UI shows nothing the CLI cannot.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">07 · terminal output styling</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <pre style="margin:0;padding:14px 16px;background:var(--panel);border:1px solid var(--line);font-size:12px;line-height:1.5;overflow:auto"><span style="color:var(--dim)">$ </span><span style="font-weight:600">berth who 14000</span>
+
+  port     <span style="font-weight:600">14000</span>  (project 4 (cith-watch) · worktree 0 · role 00 web)
+  lease    none
+  holder   node 8812 (vite)
+  state    <span style="color:var(--squatter)">squatter</span>
+  because  port is inside cith-watch block (P=4), no cith-watch lease
+  because  ps -E 8812: CLAUDE_CODE_SESSION_ID=38c7f0de… (sightline)
+  because  vite was started with --port 14000 instead of 15000
+
+<span style="color:var(--dim)">$ </span><span style="font-weight:600">berth check</span>
+
+  <span style="color:var(--ok)">ok</span>        19
+  <span style="color:var(--idle)">idle</span>       4
+  <span style="color:var(--stale)">stale</span>      3
+  <span style="color:var(--orphan)">orphan</span>     1
+  <span style="color:var(--unmanaged)">unmanaged</span>  3
+  <span style="color:var(--squatter)">squatter</span>   1
+  <span style="color:var(--conflict)">conflict</span>   1
+  <span style="color:var(--drift)">drift</span>      2
+  34 ports · 5 live sessions · reconcile 74 ms (cached 1 s) · exit 0</pre>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:11px;color:var(--dim);align-content:start">
+        <span style="color:var(--fg)">columns</span><span>two-space indent, left-aligned labels padded to 9 chars, values start at column 12. Same widths in <code>ls</code>, <code>who</code>, <code>check</code>.</span>
+        <span style="color:var(--fg)">colour</span><span>only the state word is coloured, using the same eight ANSI-nearest hues. Honour NO_COLOR; never colour numbers or paths.</span>
+        <span style="color:var(--fg)">evidence</span><span>"because" lines repeat the word rather than numbering, so grep works and the human reads them as a chain.</span>
+        <span style="color:var(--fg)">exit</span><span>every command prints its exit code in the summary line; it is always 0, and saying so is the point.</span>
+        <span style="color:var(--fg)">json</span><span><code>--json</code> emits exactly the object the dashboard renders. Field names are the lease schema in DESIGN.md §5.3.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="margin:0;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">08 · copy and tone</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)">
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:6px">Name the holder, never the villain</div><div style="color:var(--dim);font-size:11px">"node 8812 (vite) · session 38c7f0de" not "rogue process". Squatter and conflict are states, not accusations; the sentence always says who and how we know.</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:6px">Suggest, do not instruct</div><div style="color:var(--dim);font-size:11px">"Suggest release" / "offer adopt". One command per advisory, copyable, with the port filled in. No "you should", no exclamation marks.</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:6px">Lower-case vocabulary from the CLI</div><div style="color:var(--dim);font-size:11px">ok, idle, stale, orphan, unmanaged, squatter, conflict, drift — exactly as <code>berth check</code> prints them. Chips uppercase them visually via CSS only.</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:6px">Say how we know</div><div style="color:var(--dim);font-size:11px">Evidence is named by mechanism: "compose label", "ps -E", "claim file", "netstat". Never "detected" or "we think".</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:6px">Numbers stay raw</div><div style="color:var(--dim);font-size:11px">Ports, pids and ranges are never formatted with separators. Ages are "0h 31m", "2d 4h". Times are 24h local.</div></div>
+      <div style="background:var(--panel);padding:14px"><div style="font-weight:600;margin-bottom:6px">Empty states are sentences</div><div style="color:var(--dim);font-size:11px">"No leases match the current filters." / "Nothing bound; owner pid 5588 alive." Full stop, no icon, --dim.</div></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals(){
+    const darkSurfaces=[['--bg','#0b0d10'],['--panel','#10131a'],['--panel2','#161a22'],['--line','#232932'],['--fg','#d7dce3'],['--dim','#7f8994'],['--faint','#3b434e'],['--sel','#1a2130']].map(([name,hex])=>({name,hex}));
+    const lightSurfaces=[['--bg','#f2f2ee'],['--panel','#fafaf7'],['--panel2','#ebebe6'],['--line','#d5d5cf'],['--fg','#1b1e22'],['--dim','#646c75'],['--faint','#b9bdc2'],['--sel','#e3e6ea']].map(([name,hex])=>({name,hex}));
+    const hatch=c=>`repeating-linear-gradient(135deg,${c} 0 2px,transparent 2px 5px)`;
+    const states=[
+      ['ok','#3fd68b','#137a42','leased and bound by the expected owner, or a shared service','none','solid'],
+      ['idle','#b08d3c','#8a6a15','leased, nothing bound, owner alive','none; row dimmed to 55%','solid'],
+      ['stale','#f2b135','#a56d00','leased, nothing bound, owner pid gone','suggest berth release; never auto-kill','hatched'],
+      ['orphan','#e0812a','#b25a0f','lease cwd no longer exists (worktree removed)','suggest release; keep tombstone','hatched'],
+      ['unmanaged','#9aa5b1','#5d6772','bound inside a block, no lease, no session marker','offer berth adopt <port> --owner human','solid'],
+      ['squatter','#ff6b5d','#c9352a','bound inside another project\u2019s block by a different process, container or session','name the holder and the block owner','hatched'],
+      ['conflict','#ff3b3b','#c40e0e','lease owner differs from the live holder','show both; advise the session its belief is wrong','hatched'],
+      ['drift','#4ea6ff','#175fb8','config declares a port outside its allocation, or a labelled service vanished','suggest compose up or policy update; never reassign','solid'],
+    ].map(([name,dark,light,meaning,response,cellNote])=>({name,dark,light,meaning,response,cellNote,cell:cellNote==='hatched'?hatch(dark):dark}));
+    const type=[
+      ['28 / 600 / −.01em','28px','600','-0.01em','none','var(--fg)','berth ui','pack title only'],
+      ['18 / 600','18px','600','0','none','var(--fg)','17101','drawer port number'],
+      ['13 / 600 / .04em','13px','600','0.04em','none','var(--fg)','berth  port = 10000 + 1000·P + 100·W + R','wordmark, formula'],
+      ['12 / 400·600','12px','400','0','none','var(--fg)','17000  web  node 5610 (next dev)  ~/projects/amiable/chancery','body, table cells (ports at 600)'],
+      ['11 / 400','11px','400','0','none','var(--dim)','claims/7d2f91bc.json · ps -E on node 5610 shows CLAUDECODE=1','secondary, evidence, paths'],
+      ['10 / 500 / .08em / caps','10px','500','0.08em','uppercase','var(--dim)','project · worktree · block','column heads, section labels, chips (.06em)'],
+    ].map(([spec,size,weight,tracking,transform,color,sample,use])=>({spec,size,weight,tracking,transform,color,sample,use}));
+    const demo=['ok','ok','idle',null,null,null,null,null,'conflict',null];
+    const demoCells=demo.map(s=>s?{bg:['stale','orphan','squatter','conflict'].includes(s)?hatch(`var(--${s})`):`var(--${s})`,border:`var(--${s})`}:{bg:'var(--empty)',border:'var(--line)'});
+    return {darkSurfaces,lightSurfaces,states,type,demoCells};
+  }
+}
+</script>
+</body>
+</html>

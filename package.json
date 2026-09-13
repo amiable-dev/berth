@@ -1,0 +1,55 @@
+{
+  "name": "@amiable-dev/berth",
+  "version": "0.1.0",
+  "description": "Advisory port registry, reconciler and dashboard for concurrent agent sessions on one machine",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "berth": "dist/berth.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amiable-dev/berth.git"
+  },
+  "homepage": "https://github.com/amiable-dev/berth#readme",
+  "bugs": {
+    "url": "https://github.com/amiable-dev/berth/issues"
+  },
+  "keywords": [
+    "ports",
+    "dev-server",
+    "claude-code",
+    "agents",
+    "registry",
+    "localhost",
+    "developer-tools"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "npm run build:ui && vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "npm run build:ui && tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "prepack": "npm run build",
+    "build:ui": "node scripts/build.mjs --ui-only"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.13",
+    "@types/node": "^20.19.0",
+    "esbuild": "^0.28.2",
+    "smol-toml": "^1.8.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

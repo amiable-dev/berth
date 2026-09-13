@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/amiable-dev/berth/discussions
+    about: Ask questions and discuss berth in GitHub Discussions
+  - name: Security Vulnerabilities
+    url: https://github.com/amiable-dev/berth/security/advisories/new
+    about: Report security vulnerabilities privately (do not open public issues)
+  - name: Design Document
+    url: https://github.com/amiable-dev/berth/blob/main/docs/DESIGN.md
+    about: The council-reviewed design. Read it before proposing a change to the port scheme, the ledger or the advisory model
