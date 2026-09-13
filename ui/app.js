@@ -1328,6 +1328,13 @@ function renderMap() {
       ),
     );
     const cells = el('div', { class: `cells ${opacity}` });
+    // Legacy ports first: on a machine that has not migrated to blocks they are what is running,
+    // and a narrow viewport must not have to scroll past ten empty role cells to find them.
+    if (legacy.length) {
+      const group = el('div', { class: 'wg' }, el('span', { class: 'wl lg' }, 'legacy'));
+      for (const r of legacy) group.appendChild(cell(r, r.port, project, { legacy: true }));
+      cells.appendChild(group);
+    }
     for (const W of Ws) {
       const group = el('div', { class: 'wg' }, el('span', { class: 'wl' }, `W${W}`));
       for (let R = 0; R < 10; R++) {
@@ -1342,11 +1349,6 @@ function renderMap() {
           group.appendChild(cell(idx.byPort.get(port), port, project, { extra: true, role: name }));
         }
       }
-      cells.appendChild(group);
-    }
-    if (legacy.length) {
-      const group = el('div', { class: 'wg' }, el('span', { class: 'wl lg' }, 'legacy'));
-      for (const r of legacy) group.appendChild(cell(r, r.port, project, { legacy: true }));
       cells.appendChild(group);
     }
     grid.appendChild(cells);
