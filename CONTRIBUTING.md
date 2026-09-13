@@ -234,6 +234,20 @@ npx vitest run -t "who"  # tests whose name matches a pattern
    ```
 5. `.github/workflows/release.yml` verifies that the tag matches `package.json`, runs the full check, publishes `@amiable-dev/berth` to npm with provenance, and creates a GitHub Release whose notes are the matching CHANGELOG section. A tag with a prerelease suffix (`v0.2.0-rc.1`) is published under the `next` dist-tag and marked as a prerelease.
 
+### Branch protection and how changes land
+
+`main` is governed by a ruleset with no bypass, so this applies to maintainers too: every change arrives by pull request, the six required checks must pass (CI on Node 20 and 22 for Linux and macOS, CodeQL, Dependency Review), review threads must be resolved, history stays linear, merges are squash-only, force-pushes and deletion are blocked. Auto-merge is enabled, so the usual loop is:
+
+```bash
+git switch -c fix/thing
+# ... commit ...
+git push -u origin fix/thing
+gh pr create --fill
+gh pr merge --squash --auto        # merges itself once the checks are green
+```
+
+Dependabot pull requests follow the same path. Security reports go through GitHub's private vulnerability reporting (see SECURITY.md); secret scanning with push protection and Dependabot security updates are on, and the Actions token defaults to read-only.
+
 ### The Claude Code plugin
 
 The repository is also a Claude Code plugin (ADR-007): `.claude-plugin/plugin.json`, `hooks/hooks.json`, `.mcp.json` and `skills/*/SKILL.md` ship in the npm package, and `.claude-plugin/marketplace.json` points at the published package. To try local changes:
