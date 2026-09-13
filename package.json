@@ -11,7 +11,11 @@
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    ".claude-plugin",
+    "hooks",
+    "skills",
+    ".mcp.json"
   ],
   "engines": {
     "node": ">=20.10"

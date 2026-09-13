@@ -1,5 +1,6 @@
-# Draft ~/.config/berth/policy.toml for this machine, generated from the repos under ~/projects
-# on 2026-09-13. Project numbers (P) were confirmed the same day and are permanent.
+# Example: the policy of the machine berth was built on (2026-09-13), kept as a worked example of
+# blocks, declared ports, extras and a shared stack. Do not copy it: run `berth init` and
+# `berth project add <path>` to build yours.
 #
 # port = 10000 + 1000*P + 100*W + R
 #   P project 0-29 (hand-assigned)   W worktree 0-9 (0 = main checkout)   R role 00-99

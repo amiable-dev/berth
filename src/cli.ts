@@ -2,10 +2,12 @@ import { flagBool, flagString, type ParsedArgs, parseArgs, UsageError } from './
 import { cmdAdopt, cmdClaim, cmdEnv, cmdFree, cmdRelease } from './commands/allocate.js';
 import { cmdCompact, cmdLaunchJson, cmdNames, cmdWorktrees } from './commands/edges.js';
 import { cmdContext, cmdHooks, cmdSessionEnd } from './commands/hooks.js';
+import { cmdInit, cmdProject } from './commands/project.js';
 import { cmdCheck, cmdDoctor, cmdLs, cmdWho, type IO } from './commands/query.js';
 import { cmdScan } from './commands/scan.js';
 import { addClaim, LockTimeoutError, releaseLease } from './ledger.js';
 import { serveStdio } from './mcp.js';
+import { auditLogPath } from './paths.js';
 import {
   decodePort,
   loadPolicy,
@@ -16,7 +18,7 @@ import {
 } from './policy.js';
 import { currentSession } from './session.js';
 import { startUi } from './ui/server.js';
-import { nowIso, parsePort, run } from './util.js';
+import { appendFileSafe, nowIso, parsePort, run } from './util.js';
 import { VERSION } from './version.js';
 
 export const HELP = `berth ${VERSION} — advisory port registry for concurrent agent sessions
@@ -31,6 +33,9 @@ usage: berth <command> [options]
   release --port P | --all [--force] [--json]
   adopt <port> --owner human|session [--project X] [--role R] [--json]
   free <port> [--force] [--json]                  SIGTERM an own-user listener (refuses others')
+  init [--base N]                                 write a starting policy (no projects)
+  project add [path] [--name N] [--number P]      register a repo: next free P, declared ports, extras
+  project list [--json]                           registered projects and their blocks
   scan [--write] [--project X] [--json]           find ports hardcoded in repo configs
   compact [--json]                                fold per-session claim files into the ledger
   context | session-end                           Claude Code hook entry points (read stdin JSON)
@@ -43,7 +48,10 @@ usage: berth <command> [options]
   doctor [--json]                                 environment checks
   version | help
 
-env: BERTH_POLICY, BERTH_CONFIG_DIR, BERTH_STATE_DIR, NO_COLOR. Exit codes: 0 ok, 1 refused/failed, 2 usage.`;
+env: BERTH_POLICY, BERTH_CONFIG_DIR, BERTH_STATE_DIR, NO_COLOR, BERTH_ALLOW_DESTRUCTIVE.
+free, --force, hooks install/uninstall, worktrees prune, init --force and adopt --owner human need a human at an
+interactive terminal (refused from agent sessions and non-interactive shells unless BERTH_ALLOW_DESTRUCTIVE=1).
+Exit codes: 0 ok, 1 refused/failed, 2 usage.`;
 
 async function cmdUi(args: ParsedArgs, io: IO): Promise<number> {
   const p = flagString(args.flags, 'port');
@@ -108,6 +116,8 @@ const COMMANDS: Record<string, (args: ParsedArgs, io: IO) => Promise<number>> = 
   adopt: cmdAdopt,
   free: cmdFree,
   scan: cmdScan,
+  init: cmdInit,
+  project: cmdProject,
   compact: cmdCompact,
   context: cmdContext,
   'session-end': cmdSessionEnd,
@@ -131,11 +141,47 @@ const COMMANDS: Record<string, (args: ParsedArgs, io: IO) => Promise<number>> = 
   },
 };
 
-export async function main(argv: string[]): Promise<number> {
-  const io: IO = {
-    out: (s) => process.stdout.write(`${s}\n`),
-    err: (s) => process.stderr.write(`${s}\n`),
-  };
+/**
+ * Commands with teeth (ADR-008): refused unless a human is at an interactive terminal, or the
+ * operator sets BERTH_ALLOW_DESTRUCTIVE=1 deliberately. This is protection against accidental
+ * misuse by an agent, not a security boundary: it fails closed on ambiguity (no TTY, or a Claude
+ * marker present) and can be bypassed only by an explicit environment variable.
+ */
+export function isDestructive(args: ParsedArgs): boolean {
+  if (args.flags.force === true) return true;
+  if (args.cmd === 'free') return true;
+  if (
+    args.cmd === 'hooks' &&
+    (args.positional[0] === 'install' || args.positional[0] === 'uninstall')
+  )
+    return true;
+  if (args.cmd === 'worktrees' && args.positional[0] === 'prune') return true;
+  if (args.cmd === 'adopt' && args.flags.owner === 'human') return true;
+  return false;
+}
+
+export function inAgentSession(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (
+    env.CLAUDECODE === '1' ||
+    (typeof env.CLAUDE_CODE_SESSION_ID === 'string' && env.CLAUDE_CODE_SESSION_ID.length > 0)
+  );
+}
+
+/** A human at a terminal: both stdin and stdout are TTYs and no agent marker is present. */
+export function humanAtTerminal(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY) && !inAgentSession(env);
+}
+
+function audit(line: string): void {
+  appendFileSafe(auditLogPath(), `${nowIso()} ${line}\n`);
+}
+
+const DEFAULT_IO: IO = {
+  out: (s) => process.stdout.write(`${s}\n`),
+  err: (s) => process.stderr.write(`${s}\n`),
+};
+
+export async function main(argv: string[], io: IO = DEFAULT_IO): Promise<number> {
   // Hook entry points must never fail the session: any error is reported and exit stays 0.
   const isHook = HOOK_COMMANDS.has(argv[0] ?? '');
   let args: ParsedArgs;
@@ -160,6 +206,24 @@ export async function main(argv: string[]): Promise<number> {
     io.err(`berth: unknown command "${args.cmd}"`);
     io.err(HELP);
     return 2;
+  }
+  if (isDestructive(args)) {
+    const allowed = process.env.BERTH_ALLOW_DESTRUCTIVE === '1';
+    if (!allowed && !humanAtTerminal()) {
+      const why = inAgentSession()
+        ? 'an agent session (CLAUDECODE is set)'
+        : 'a non-interactive shell';
+      io.err(
+        `berth: "${argv.join(' ')}" is refused from ${why}: it is a human-only command. Run it from your own terminal, or set BERTH_ALLOW_DESTRUCTIVE=1 to allow it deliberately.`,
+      );
+      audit(
+        `refused argv=${JSON.stringify(argv)} agent=${inAgentSession()} tty=${Boolean(process.stdin.isTTY)}`,
+      );
+      return 1;
+    }
+    audit(
+      `allowed argv=${JSON.stringify(argv)} agent=${inAgentSession()} tty=${Boolean(process.stdin.isTTY)} override=${allowed}`,
+    );
   }
   try {
     return await fn(args, io);

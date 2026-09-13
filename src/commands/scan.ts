@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { flagBool, flagString, type ParsedArgs } from '../args.js';
-import { policyPath } from '../paths.js';
+import { withLock } from '../ledger.js';
+import { policyLockPath, policyPath } from '../paths.js';
 import { loadPolicy, type Policy, type Project, parsePolicy } from '../policy.js';
 import { atomicWriteSync } from '../util.js';
 import type { IO } from './query.js';
@@ -168,17 +169,25 @@ export async function cmdScan(args: ParsedArgs, io: IO): Promise<number> {
   }
   if (flagBool(args.flags, 'write')) {
     const file = policyPath();
-    let text = readFileSync(file, 'utf8');
-    let changed = 0;
-    for (const r of results) {
-      if (r.missing.length === 0) continue;
-      const declared = [...new Set([...r.declared, ...r.missing])].sort((a, b) => a - b);
-      text = updateDeclared(text, r.project, declared);
-      changed++;
-    }
+    const changed = await withLock(
+      { deadlineMs: 5000, cmd: 'scan --write', file: policyLockPath() },
+      () => {
+        let text = readFileSync(file, 'utf8');
+        let n = 0;
+        for (const r of results) {
+          if (r.missing.length === 0) continue;
+          const declared = [...new Set([...r.declared, ...r.missing])].sort((a, b) => a - b);
+          text = updateDeclared(text, r.project, declared);
+          n++;
+        }
+        if (n > 0) {
+          parsePolicy(text);
+          atomicWriteSync(file, text, { backup: true });
+        }
+        return n;
+      },
+    );
     if (changed > 0) {
-      parsePolicy(text);
-      atomicWriteSync(file, text, { backup: true });
       io.out(
         `updated declared ports for ${changed} project${changed === 1 ? '' : 's'} in ${file} (backup at ${file}.bak)`,
       );

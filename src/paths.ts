@@ -30,3 +30,6 @@ export const worktreesDir = (): string => path.join(stateDir(), 'worktrees');
 export const overridesDir = (): string => path.join(stateDir(), 'overrides');
 export const truthCachePath = (): string => path.join(stateDir(), 'truth.cache.json');
 export const compactLogPath = (): string => path.join(stateDir(), 'compact.log');
+export const auditLogPath = (): string => path.join(stateDir(), 'audit.log');
+/** Lock for writers of policy.toml (project add, scan --write). */
+export const policyLockPath = (): string => `${policyPath()}.lock`;

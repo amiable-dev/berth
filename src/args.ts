@@ -22,6 +22,8 @@ const VALUE_FLAGS = new Set([
   'w',
   'name',
   'format',
+  'number',
+  'base',
 ]);
 
 export class UsageError extends Error {

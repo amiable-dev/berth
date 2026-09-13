@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `berth init` writes a generic starting policy; `berth project add [path]` registers a repository with the next free permanent number, its scanned `declared` ports and Compose-derived `extras`, additively and idempotently; `berth project list` (ADR-006).
+- Claude Code plugin in the repository and the npm package: SessionStart/SessionEnd hooks, the MCP server and two skills, `berth-ports` (day-to-day) and `berth-onboard` (register the repo you are in), installable from the repo's own marketplace (ADR-007).
+- README quick start: install, `init`, `project add .`, `check`; the example policy is now a worked example rather than the onboarding path.
+
+### Security
+
+- Agent guardrail (ADR-008): `free`, any `--force`, `hooks install|uninstall`, `worktrees prune`, `init --force` and `adopt --owner human` run only for a human at an interactive terminal with no Claude marker in the environment, or with `BERTH_ALLOW_DESTRUCTIVE=1` set deliberately; refusals and overrides are logged to `~/.local/state/berth/audit.log`; shipped skills never name those commands and the MCP server exposes only self-scoped tools.
+- Writers of `policy.toml` (`project add`, `scan --write`) serialise on a lock; `project add` requires a git repository root unless `--allow-non-git`.
+- The plugin's hooks and MCP server start through `hooks/run.sh`, which finds Node in common version-manager locations and never fails a session when it cannot.
+
 ## [0.1.1] - 2026-09-13
 
 **Review fixes, a map that shows what is actually running, and a README people can start from.** Everything an eight-angle code review of 0.1.0 found is fixed; the dashboard map now surfaces legacy ports per project; the README leads with the decode plate and a day-to-day guide.

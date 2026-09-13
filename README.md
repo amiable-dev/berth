@@ -19,15 +19,25 @@ When several Claude Code sessions, a couple of git worktrees and a Docker stack 
   <img alt="berth ui map view: one row per project block, live legacy ports as numbered cells, the ten role cells per worktree, and the legacy strip for 1024–9999" src="docs/images/dashboard-map-light.png" width="100%">
 </picture>
 
-## Install
+## Quick start
 
 ```bash
 npm install -g @amiable-dev/berth      # Node 20 or newer, zero runtime dependencies
-cp examples/policy.example.toml ~/.config/berth/policy.toml   # then edit: one [projects.<name>] per repo
-berth doctor                            # confirms lsof, docker, hooks and the policy
+berth init                              # a starting policy in ~/.config/berth/policy.toml
+cd ~/projects/my-app && berth project add .   # next free project number, ports found in your configs
+berth check                             # what is listening, who holds it, what needs attention
 ```
 
-The policy is the only thing you write by hand: each repo gets a permanent number `P` and a path. `berth scan --write` fills in the ports your repos already hardcode so nothing is lost before you migrate.
+`berth project add` is additive and idempotent: it appends one `[projects.<name>]` table, records the ports your repo already hardcodes as `declared`, and names Compose services that aren't one of the ten roles as `extras`. Project numbers are permanent from that moment; `berth project list` shows them. `berth doctor` checks lsof, Docker, the policy and the Claude Code wiring.
+
+**With Claude Code**, install the plugin instead of wiring hooks by hand: it ships the SessionStart/SessionEnd hooks, the MCP server and two skills (`berth-ports` for day-to-day, `berth-onboard` for registering a repo):
+
+```bash
+claude plugin marketplace add amiable-dev/berth
+claude plugin install berth@berth
+```
+
+Your agent can then register the repository it is working in by itself (the `berth-onboard` skill runs `berth project add .`). The manual route (`berth hooks install`, `claude mcp add --scope user berth -- berth mcp`, the rules in [`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md)) still works and is described under Claude Code integration.
 
 ## Day to day
 
@@ -125,6 +135,8 @@ Truth comes from four read-only sources, none of which need sudo: `lsof` for you
 
 ## Claude Code integration
 
+The plugin (`claude plugin marketplace add amiable-dev/berth`, then `claude plugin install berth@berth`) bundles everything below. Installed by hand, the pieces are:
+
 - **SessionStart** runs `berth context`: read-only, under 200 ms, always exit 0. It injects the project's block, current leases, shared services and any live conflict touching this project, and appends the role-port exports to `CLAUDE_ENV_FILE`.
 - **SessionEnd** runs `berth session-end`: records that the session ended; its leases go `stale` once nothing is bound.
 - **Rules** for `~/.claude/CLAUDE.md` are in [`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md). Strict-port is the rule that makes an advisory registry work.
@@ -133,6 +145,8 @@ Truth comes from four read-only sources, none of which need sudo: `lsof` for you
 - **Names**: `berth names sync` turns http leases into [portless](https://github.com/vercel-labs/portless) aliases such as `chancery.localhost`; berth allocates, portless only proxies.
 
 Any other agent or script uses the same CLI; `--json` is the boundary on every read command.
+
+**What an agent may do.** Everything self-scoped: learn its ports, claim and release its own leases, adopt a server it started, register the repo it is in, write that repo's `launch.json`. Commands with teeth (`free`, anything with `--force`, `hooks install|uninstall`, `worktrees prune`, `init --force`) are refused inside an agent session; a human runs them from their own shell, or sets `BERTH_ALLOW_DESTRUCTIVE=1` deliberately. The MCP server exposes only the self-scoped tools.
 
 ## Commands
 
@@ -145,6 +159,9 @@ claim --role R | --extra NAME | --dynamic N | --port P [--note T] [--force] [--j
 release --port P | --all [--force] [--json]
 adopt <port> --owner human|session [--project X] [--role R] [--json]
 free <port> [--force] [--json]                  SIGTERM an own-user listener; refuses others'
+init [--base N]                                 write a starting policy (no projects)
+project add [path] [--name N] [--number P]      register a repo: next free P, declared ports, extras
+project list [--json]                           registered projects and their blocks
 scan [--write] [--project X] [--json]           ports hardcoded in repo configs vs policy
 compact                                         fold per-session claim files into the ledger
 context | session-end                           Claude Code hook entry points
@@ -157,7 +174,7 @@ ui [--port N] [--open]                          dashboard on 127.0.0.1 (default 
 doctor [--json]                                 environment checks
 ```
 
-Environment: `BERTH_POLICY`, `BERTH_CONFIG_DIR`, `BERTH_STATE_DIR`, `NO_COLOR`. Exit codes: 0 ok, 1 refused or failed, 2 usage.
+Environment: `BERTH_POLICY`, `BERTH_CONFIG_DIR`, `BERTH_STATE_DIR`, `NO_COLOR`, `BERTH_ALLOW_DESTRUCTIVE`. Exit codes: 0 ok, 1 refused or failed, 2 usage.
 
 ## How it stays safe
 
@@ -173,7 +190,7 @@ See [SECURITY.md](SECURITY.md) for the disclosure policy.
 
 - [docs/DESIGN.md](docs/DESIGN.md): the council-reviewed design, decisions and rollout.
 - [docs/RESEARCH.md](docs/RESEARCH.md): the OSS landscape it was measured against.
-- [docs/adr/](docs/adr/): ADR-001 advisory not enforcement · ADR-002 the decodable port scheme · ADR-003 daemonless ledger and lock-free claims · ADR-004 truth sources and attribution · ADR-005 Node 20 single bundle.
+- [docs/adr/](docs/adr/): ADR-001 advisory not enforcement · ADR-002 the decodable port scheme · ADR-003 daemonless ledger and lock-free claims · ADR-004 truth sources and attribution · ADR-005 Node 20 single bundle · ADR-006 self-configuring CLI · ADR-007 plugin, skills and MCP · ADR-008 agent guardrails.
 - [design_handoff_berth_ui/](design_handoff_berth_ui/): the dashboard design pack and prototype the UI was built to.
 
 ## Contributing

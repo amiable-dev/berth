@@ -1,0 +1,19 @@
+{
+  "name": "berth",
+  "owner": {
+    "name": "Amiable Dev",
+    "email": "chris@amiable.dev",
+    "url": "https://github.com/amiable-dev"
+  },
+  "plugins": [
+    {
+      "name": "berth",
+      "description": "Advisory port registry for concurrent agent sessions: hooks, MCP server and skills. Installs the published npm package, which carries the compiled CLI.",
+      "source": {
+        "source": "npm",
+        "package": "@amiable-dev/berth"
+      }
+    }
+  ],
+  "description": "berth: advisory port registry for concurrent agent sessions (hooks, MCP server, skills)."
+}

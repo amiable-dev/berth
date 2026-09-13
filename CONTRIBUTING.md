@@ -234,6 +234,18 @@ npx vitest run -t "who"  # tests whose name matches a pattern
    ```
 5. `.github/workflows/release.yml` verifies that the tag matches `package.json`, runs the full check, publishes `@amiable-dev/berth` to npm with provenance, and creates a GitHub Release whose notes are the matching CHANGELOG section. A tag with a prerelease suffix (`v0.2.0-rc.1`) is published under the `next` dist-tag and marked as a prerelease.
 
+### The Claude Code plugin
+
+The repository is also a Claude Code plugin (ADR-007): `.claude-plugin/plugin.json`, `hooks/hooks.json`, `.mcp.json` and `skills/*/SKILL.md` ship in the npm package, and `.claude-plugin/marketplace.json` points at the published package. To try local changes:
+
+```bash
+npm run build                          # hooks and MCP run dist/berth.js from the plugin root
+claude plugin validate . --strict      # manifest, hooks, marketplace
+claude --plugin-dir .                  # a session with this checkout as the plugin
+```
+
+Skills are invoked as `/berth:berth-ports` and `/berth:berth-onboard`, or picked up automatically from their descriptions. The build syncs the plugin version to `package.json`; do not edit it by hand. Skills must never instruct `berth free`, `--force` or `hooks` commands (ADR-008); a test enforces it.
+
 ### One-time setup: npm trusted publishing
 
 The release workflow authenticates to npm with GitHub's OIDC token (`id-token: write`), not a stored secret, so there is no `NPM_TOKEN` anywhere in the repository. This works only once the package's trusted publisher has been configured on npmjs.com:

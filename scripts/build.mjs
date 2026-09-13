@@ -36,6 +36,19 @@ function inlineUi() {
   return { bytes: html.length };
 }
 
+// Keep the plugin manifest's version in step with package.json (tests enforce equality).
+function syncPluginVersion() {
+  const file = join(root, '.claude-plugin', 'plugin.json');
+  if (!existsSync(file)) return;
+  const manifest = JSON.parse(readFileSync(file, 'utf8'));
+  if (manifest.version !== pkg.version) {
+    manifest.version = pkg.version;
+    writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
+    console.log(`plugin: version synced to ${pkg.version}`);
+  }
+}
+
+syncPluginVersion();
 const ui = inlineUi();
 console.log(`ui: inlined ${ui.bytes} bytes`);
 if (uiOnly) process.exit(0);
