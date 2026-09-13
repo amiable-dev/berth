@@ -137,6 +137,28 @@ function breakLock(file: string): boolean {
   return true;
 }
 
+/**
+ * Read a lock file's metadata. Returns undefined when the file is gone (the holder released it
+ * between our failed create and this read), and undefined metadata when it is unreadable.
+ */
+function readLockMeta(
+  file: string,
+  fallbackSince: number,
+): { meta: LockMeta | undefined; ageMs: number } | undefined {
+  let raw: string;
+  try {
+    raw = readFileSync(file, 'utf8');
+  } catch {
+    return undefined;
+  }
+  try {
+    const meta = JSON.parse(raw) as LockMeta;
+    return { meta, ageMs: Date.now() - Date.parse(meta.ts) };
+  } catch {
+    return { meta: undefined, ageMs: Date.now() - fallbackSince };
+  }
+}
+
 export interface LockOptions {
   deadlineMs: number;
   cmd: string;
@@ -172,23 +194,9 @@ export async function withLock<T>(opts: LockOptions, fn: () => T | Promise<T>): 
       break;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-      // The lock may vanish between the failed open and this read; that is just a retry.
-      let meta: LockMeta | undefined;
-      let ageMs = 0;
-      let raw: string | undefined;
-      try {
-        raw = readFileSync(file, 'utf8');
-      } catch {
-        continue;
-      }
-      try {
-        meta = JSON.parse(raw) as LockMeta;
-        ageMs = Date.now() - Date.parse(meta.ts);
-      } catch {
-        meta = undefined;
-        ageMs = Date.now() - started;
-      }
-      const verdict = lockIsStale(meta, ageMs);
+      const held = readLockMeta(file, started);
+      if (!held) continue; // the lock vanished between the failed open and the read: retry
+      const verdict = lockIsStale(held.meta, held.ageMs);
       holder = verdict.reason;
       if (verdict.stale) {
         breakLock(file);
