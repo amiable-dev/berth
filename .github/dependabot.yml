@@ -20,6 +20,11 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: "development"
+    ignore:
+      # @types/node tracks the engine line (Node 20, ADR-005); majors are bumped by hand
+      # together with `engines.node`.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     labels:
       - "dependencies"
     commit-message:
