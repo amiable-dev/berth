@@ -58,11 +58,12 @@ jobs:
 
       # Plugin packaging (ADR-007): validate the manifest, hooks and marketplace with the
       # Claude Code CLI on one matrix cell; the plugin tests cover the rest everywhere.
+      # The CLI is pinned through .github/tools/package-lock.json (Dependabot keeps it current).
       - name: Validate the Claude Code plugin
         if: matrix.os == 'ubuntu-latest' && matrix.node == 22
         run: |
-          npm install -g @anthropic-ai/claude-code@2.1.270 >/dev/null 2>&1 || { echo "claude CLI unavailable; skipping"; exit 0; }
-          claude plugin validate . --strict
+          npm ci --prefix .github/tools
+          .github/tools/node_modules/.bin/claude plugin validate . --strict
 
       # ADR-005: the published package must have no runtime dependencies.
       - name: Assert zero runtime dependencies

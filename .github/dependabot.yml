@@ -33,6 +33,20 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
+  # CI tools installed from a lockfile (the Claude Code CLI used to validate the plugin)
+  - package-ecosystem: "npm"
+    directory: "/.github/tools"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+
   # GitHub Actions (pinned by commit SHA; Dependabot updates the SHA and the
   # trailing version comment together)
   - package-ecosystem: "github-actions"
