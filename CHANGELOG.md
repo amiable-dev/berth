@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Repository hardening: `main` ruleset (pull request required, six required checks, linear history, squash only, no force-push or deletion, no bypass), private vulnerability reporting, read-only default Actions token, Dependabot security updates and secret-scanning push protection; CodeQL findings resolved (TOCTOU reads, view dispatch, exception text in the dashboard API) and workflow installs pinned.
 - Agent guardrail (ADR-008): `free`, any `--force`, `hooks install|uninstall`, `worktrees prune`, `init --force` and `adopt --owner human` run only for a human at an interactive terminal with no Claude marker in the environment, or with `BERTH_ALLOW_DESTRUCTIVE=1` set deliberately; refusals and overrides are logged to `~/.local/state/berth/audit.log`; shipped skills never name those commands and the MCP server exposes only self-scoped tools.
 - Writers of `policy.toml` (`project add`, `scan --write`) serialise on a lock; `project add` requires a git repository root unless `--allow-non-git`.
 - The plugin's hooks and MCP server start through `hooks/run.sh`, which finds Node in common version-manager locations and never fails a session when it cannot.
