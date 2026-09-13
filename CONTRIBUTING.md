@@ -248,6 +248,7 @@ npm only lets you configure a trusted publisher on a package that already exists
    npm stage list @amiable-dev/berth      # shows the stage id
    npm stage approve <stage-id>           # prompts for the one-time password
    ```
+   The `stage` commands need npm 11; on a machine whose Node ships npm 10, prefix them with `npx -y npm@11`.
    or approve from the package page on npmjs.com. The version is published at the dist-tag chosen at staging time (`latest`, or `next` for prerelease tags). Re-running a release workflow before approval fails on "already staged"; reject the stale stage first if you need to restage.
 
 If the package does not yet exist on the registry, publish the very first version manually from a logged-in machine (`npm publish --access public`), then configure the trusted publisher as above. After that, never publish by hand.
