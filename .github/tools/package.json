@@ -1,0 +1,8 @@
+{
+  "name": "berth-ci-tools",
+  "private": true,
+  "description": "Pinned CLI tools used by CI (installed with npm ci from the lockfile so Scorecard treats them as pinned; Dependabot bumps them).",
+  "devDependencies": {
+    "@anthropic-ai/claude-code": "2.1.270"
+  }
+}
