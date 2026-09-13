@@ -162,6 +162,8 @@ const FETCH_TIMEOUT_MS = 4000;
 const THEME_KEY = 'berth.theme';
 const LEGACY_MIN = 1024;
 const LEGACY_MAX = 9999;
+/** Block-scheme fallbacks, used only when a report omits a `policy.scheme` field. */
+const DEFAULT_SCHEME = Object.freeze({ base: 10000, projectMax: 29, worktreeMax: 9 });
 const LANDMARKS = [1024, 3000, 4000, 5000, 5432, 6379, 8000, 9090, 9999];
 /** @type {Record<number, string>} */
 const RESERVED_LABEL = { 0: 'privileged', 4000: 'portless', 49152: 'macOS ephemeral' };
@@ -215,8 +217,10 @@ const ui = {
 let data = null;
 
 /**
- * Indexes rebuilt whenever `data` changes.
- * @type {{byPort: Map<number, PortRecord>, sessionOfPort: Map<number, SessionRecord>, projectByName: Map<string, Project>, projectByP: Map<number, Project>, roleName: Map<number, string>, home: string}}
+ * Indexes rebuilt whenever `data` changes, plus the block scheme read from `policy`:
+ * `base` is the first block port, `blockEnd` the first port past the last block
+ * (base + 1000·(projectMax + 1)), `dynamic` the inclusive dynamic-pool bounds.
+ * @type {{byPort: Map<number, PortRecord>, sessionOfPort: Map<number, SessionRecord>, projectByName: Map<string, Project>, projectByP: Map<number, Project>, roleName: Map<number, string>, home: string, base: number, blockEnd: number, projectMax: number, worktreeMax: number, dynamic: [number, number], ttlHours: number}}
  */
 let idx = {
   byPort: new Map(),
@@ -225,7 +229,16 @@ let idx = {
   projectByP: new Map(),
   roleName: new Map(),
   home: '',
+  base: DEFAULT_SCHEME.base,
+  blockEnd: DEFAULT_SCHEME.base + 1000 * (DEFAULT_SCHEME.projectMax + 1),
+  projectMax: DEFAULT_SCHEME.projectMax,
+  worktreeMax: DEFAULT_SCHEME.worktreeMax,
+  dynamic: [0, 0],
+  ttlHours: 8,
 };
+
+/** Fingerprint of the last rendered report (see `fingerprintOf`); '' until the first load. */
+let fingerprint = '';
 
 /** @type {ReturnType<typeof setTimeout>|null} */
 let copiedTimer = null;
@@ -288,6 +301,32 @@ function keyActivate(ev) {
     /** @type {HTMLElement} */
     (ev.currentTarget).click();
   }
+}
+
+/**
+ * Selector identifying the focused element so focus survives a full re-render: static ids
+ * (search, tabs), `data-port` rows and cells, `data-session` rail rows, `data-state` filter
+ * chips, or one of the singleton controls that are rebuilt with the drawer/filters.
+ * @returns {string|null}
+ */
+function focusKey() {
+  const a = document.activeElement;
+  if (!(a instanceof HTMLElement) || a === document.body) return null;
+  if (a.id) return `#${CSS.escape(a.id)}`;
+  for (const key of ['port', 'session', 'state']) {
+    const value = a.dataset[key];
+    if (value != null) return `[data-${key}="${CSS.escape(value)}"]`;
+  }
+  for (const cls of ['dr-close', 'copy', 'psel', 'clear'])
+    if (a.classList.contains(cls)) return `.${cls}`;
+  return null;
+}
+
+/** @param {string|null} key  selector from `focusKey()` */
+function restoreFocus(key) {
+  if (!key) return;
+  const node = document.querySelector(key);
+  if (node instanceof HTMLElement) node.focus({ preventScroll: true });
 }
 
 /**
@@ -367,9 +406,23 @@ function ageOf(r) {
   return r.age || (r.lease ? ageSince(r.lease.created) : '—');
 }
 
-/** @param {PortRecord} r */
+/**
+ * Live holder as `holder pid N`, composed from the separate fields. The server may send the
+ * bare command name (or `unknown process`) with `pid` alongside, a legacy string that already
+ * embeds the pid (`node 9001 (next dev)`, `pid 9001`), or a container name; the pid is appended
+ * only when the holder does not already mention it, and never for a container, whose `pid` is
+ * the VM proxy's.
+ * @param {PortRecord} r
+ */
 function holderOf(r) {
-  return r.live?.holder || '—';
+  const live = r.live;
+  if (!live) return '—';
+  let holder = (live.holder || '').trim();
+  if (!holder || holder === 'unknown') holder = 'unknown process';
+  if (live.container && holder === live.container) holder = `container ${holder}`;
+  if (live.pid == null || live.container) return holder;
+  const mentioned = holder.split(/[\s()]+/).includes(String(live.pid));
+  return mentioned ? holder : `${holder} pid ${live.pid}`;
 }
 
 /** @param {PortRecord} r */
@@ -411,16 +464,34 @@ function sessionLabel(r) {
   return '—';
 }
 
-/** @param {number} P */
-function blockRange(P) {
-  const base = 10000 + 1000 * P;
+/** First port of project P's block: the policy's own `base` when present, else from the scheme. @param {number} P @param {Project|undefined} [project] */
+function baseOfP(P, project) {
+  return typeof project?.base === 'number' ? project.base : idx.base + 1000 * P;
+}
+
+/** @param {Project} p */
+function blockRange(p) {
+  const base = baseOfP(p.P, p);
   return `${base}–${base + 999}`;
+}
+
+/**
+ * Client-side P/W/R for a port inside the block range, parameterised by the scheme base.
+ * Only for ports the server did not decode: empty map cells and declared/legacy ports.
+ * @param {number} port
+ * @returns {{P: number, W: number, R: number}|null}
+ */
+function decodeClient(port) {
+  if (port < idx.base || port >= idx.blockEnd) return null;
+  const off = port - idx.base;
+  return { P: Math.floor(off / 1000), W: Math.floor((off % 1000) / 100), R: off % 100 };
 }
 
 /** @param {number} port @param {Project|undefined} project */
 function roleForPort(port, project) {
-  const R = port % 100;
-  if (port < 10000 || port >= 40000) return '';
+  const d = decodeClient(port);
+  if (!d) return '';
+  const R = d.R;
   if (R < 10) return idx.roleName.get(R) || '';
   if (project) {
     const hit = Object.entries(project.extras || {}).find(([, slot]) => slot === R);
@@ -436,16 +507,12 @@ function roleForPort(port, project) {
  * @returns {{P: number|string, W: number|string, R: number|string, text: string, block: boolean}}
  */
 function decode(port, r) {
-  const pools = data?.policy.pools.dynamic || [40000, 41999];
-  const ttl = data?.policy.pools.ttlHours ?? 8;
-  const d =
-    r?.decoded ||
-    (port >= 10000 && port < 40000
-      ? { P: Math.floor((port - 10000) / 1000), W: Math.floor((port % 1000) / 100), R: port % 100 }
-      : null);
+  const pools = idx.dynamic;
+  const ttl = idx.ttlHours;
+  const d = r?.decoded || decodeClient(port);
   if (d) {
     const project = idx.projectByP.get(d.P);
-    const role = roleForPort(port, project) || 'extra';
+    const role = r?.role || r?.lease?.role || roleForPort(port, project) || 'extra';
     return {
       ...d,
       block: true,
@@ -557,7 +624,42 @@ function reindex(report) {
   );
   const user = report.host?.user || '';
   const home = user ? (report.host.platform === 'darwin' ? `/Users/${user}` : `/home/${user}`) : '';
-  idx = { byPort, sessionOfPort, projectByName, projectByP, roleName, home };
+  const scheme = report.policy.scheme || {};
+  const base = typeof scheme.base === 'number' ? scheme.base : DEFAULT_SCHEME.base;
+  const projectMax =
+    typeof scheme.projectMax === 'number' ? scheme.projectMax : DEFAULT_SCHEME.projectMax;
+  const worktreeMax =
+    typeof scheme.worktreeMax === 'number' ? scheme.worktreeMax : DEFAULT_SCHEME.worktreeMax;
+  const blockEnd = base + 1000 * (projectMax + 1);
+  const pool = report.policy.pools?.dynamic;
+  /** @type {[number, number]} */
+  const dynamic =
+    Array.isArray(pool) && pool.length === 2 ? [pool[0], pool[1]] : [blockEnd, blockEnd + 1999];
+  const ttlHours = report.policy.pools?.ttlHours ?? 8;
+  idx = {
+    byPort,
+    sessionOfPort,
+    projectByName,
+    projectByP,
+    roleName,
+    home,
+    base,
+    blockEnd,
+    projectMax,
+    worktreeMax,
+    dynamic,
+    ttlHours,
+  };
+}
+
+/**
+ * Content identity of a report with the per-poll `generatedAt`/`cacheAgeMs` left out, so a
+ * poll that changed nothing does not rebuild the page.
+ * @param {CheckReport} report
+ */
+function fingerprintOf(report) {
+  const { version, host, policy, ports, sessions, summary } = report;
+  return JSON.stringify({ version, host, policy, ports, sessions, summary });
 }
 
 // ---------------------------------------------------------------------------
@@ -611,11 +713,19 @@ async function load() {
  * @param {'live'|'fixture'} source
  */
 function setData(report, source) {
+  const print = fingerprintOf(report);
+  const changed = print !== fingerprint;
+  fingerprint = print;
   data = report;
   reindex(report);
   ui.source = source;
   ui.offline = false;
   ui.lastCheckedAt = Date.now();
+  if (!changed) {
+    // Same content as what is on screen: only the "Ns ago" label moves.
+    renderHeaderStatus();
+    return;
+  }
   if (ui.drawerPort != null && !idx.byPort.has(ui.drawerPort)) ui.drawerPort = null;
   if (ui.projectFilter && !idx.projectByName.has(ui.projectFilter)) ui.projectFilter = '';
   render();
@@ -696,6 +806,7 @@ function renderFilters() {
         {
           class: `chip c-${s}${on ? ' on' : ''}`,
           type: 'button',
+          'data-state': s,
           'aria-pressed': String(on),
           onclick: () => {
             if (on) ui.stateFilters.delete(s);
@@ -877,6 +988,7 @@ function renderSessions() {
         {
           class: `srow${sel && sel.id === s.id ? ' sel' : ''}`,
           role: 'option',
+          'data-session': s.id,
           tabindex: 0,
           'aria-selected': String(!!sel && sel.id === s.id),
           onclick: () => {
@@ -1024,7 +1136,7 @@ function renderTable() {
           { colspan: 9 },
           el('span', { class: 'gname' }, g.name),
           g.project
-            ? el('span', { class: 'gmeta' }, `P=${g.project.P} · ${blockRange(g.project.P)}`)
+            ? el('span', { class: 'gmeta' }, `P=${g.project.P} · ${blockRange(g.project)}`)
             : el('span', { class: 'gmeta' }, 'no project · outside every block'),
           g.project ? el('span', { class: 'gpath' }, g.project.path) : null,
         ),
@@ -1098,7 +1210,7 @@ function renderTable() {
  */
 function cell(r, port, project, opts = {}) {
   const state = r ? r.state : null;
-  const W = Math.floor((port % 1000) / 100);
+  const W = r ? worktreeOf(r) : (decodeClient(port)?.W ?? 0);
   const role = opts.role || (r ? roleOf(r) : roleForPort(port, project));
   const cls = opts.tick
     ? `tick${state ? ` s-${state}` : ''}`
@@ -1139,7 +1251,7 @@ function ownerLabel(r) {
 
 function renderMap() {
   const report = /** @type {CheckReport} */ (data);
-  const pmax = report.policy.scheme.projectMax ?? 29;
+  const pmax = idx.projectMax;
   const wrap = el('div', { class: 'map', onmouseleave: hideTip });
   wrap.appendChild(
     el(
@@ -1148,7 +1260,7 @@ function renderMap() {
       el(
         'span',
         null,
-        `block range 10000–${10000 + 1000 * (pmax + 1) - 1} · one row per P · cells = roles 00–09 per worktree`,
+        `block range ${idx.base}–${idx.blockEnd - 1} · one row per P · cells = roles 00–09 per worktree`,
       ),
       el('span', { class: 'spacer' }),
       STATES.map((s) =>
@@ -1166,7 +1278,7 @@ function renderMap() {
   const grid = el('div', { class: 'grid' });
   for (let P = 0; P <= pmax; P++) {
     const project = idx.projectByP.get(P);
-    const base = 10000 + 1000 * P;
+    const base = baseOfP(P, project);
     const recs = project ? report.ports.filter((r) => projectOf(r) === project.name) : [];
     const Ws = [0, ...new Set(recs.map(worktreeOf).filter((w) => w > 0))].sort((a, b) => a - b);
     const live = recs.some((r) => {
@@ -1287,7 +1399,7 @@ function renderMap() {
 function renderRules() {
   const report = /** @type {CheckReport} */ (data);
   const { scheme, pools, reserved, shared } = report.policy;
-  const pmax = scheme.projectMax ?? 29;
+  const pmax = idx.projectMax;
   const roles = Object.entries(scheme.roles || {}).sort((a, b) => a[1] - b[1]);
   const schemePanel = el(
     'section',
@@ -1296,7 +1408,7 @@ function renderRules() {
     el(
       'div',
       { class: 'formula' },
-      `port = ${scheme.base ?? 10000} + 1000·`,
+      `port = ${idx.base} + 1000·`,
       el('span', { class: 'c-ok' }, 'P'),
       ' + 100·',
       el('span', { class: 'c-drift' }, 'W'),
@@ -1310,10 +1422,10 @@ function renderRules() {
       el(
         'span',
         null,
-        `project, hand-assigned, permanent, 0–${pmax} → blocks 10000–${10000 + 1000 * (pmax + 1) - 1}`,
+        `project, hand-assigned, permanent, 0–${pmax} → blocks ${idx.base}–${idx.blockEnd - 1}`,
       ),
       el('span', { class: 'c-drift' }, 'W'),
-      el('span', null, `worktree, 0 = main checkout, 1–${scheme.worktreeMax ?? 9} additional`),
+      el('span', null, `worktree, 0 = main checkout, 1–${idx.worktreeMax} additional`),
       el('span', { class: 'c-stale' }, 'R'),
       el('span', null, 'role slot, 00–09 canonical, 10–99 project-named extras'),
     ),
@@ -1421,7 +1533,7 @@ function renderRules() {
             null,
             el('td', { class: 'c-ok' }, String(p.P)),
             el('td', { class: 'port' }, p.name),
-            el('td', null, blockRange(p.P)),
+            el('td', null, blockRange(p)),
             el('td', { class: 'dim' }, p.path),
             el('td', { class: 'dim' }, (p.declared || []).join(', ') || '—'),
             el(
@@ -1461,7 +1573,7 @@ function renderTerm() {
   appendChildren(pre, prompt('berth ls'));
   for (const g of groupByProject(visiblePorts())) {
     appendChildren(pre, [
-      `\n${g.name}  ${g.project ? `P=${g.project.P}  ${blockRange(g.project.P)}` : 'outside every block'}\n`,
+      `\n${g.name}  ${g.project ? `P=${g.project.P}  ${blockRange(g.project)}` : 'outside every block'}\n`,
     ]);
     for (const r of g.rows) {
       appendChildren(pre, [
@@ -1539,7 +1651,7 @@ function renderDrawer() {
       ownerText = `session ${shortId(owner.session_id)}… (pid ${pid ?? 'gone'})`;
     } else ownerText = `${toolLabel(owner.tool)}${owner.pid ? ` (pid ${owner.pid})` : ''}`;
   }
-  const ttl = data.policy.pools.ttlHours ?? 8;
+  const ttl = idx.ttlHours;
   const expires = r.lease?.expires
     ? `${fmtTime(r.lease.expires)} (${ttl}h TTL)`
     : r.lease
@@ -1576,7 +1688,7 @@ function renderDrawer() {
       el(
         'div',
         { class: 'decode' },
-        el('span', { class: 'plus' }, '10000 +'),
+        el('span', { class: 'plus' }, `${idx.base} +`),
         el('span', { class: 'P' }, `1000·${dec.P}`),
         el('span', { class: 'plus' }, ' +'),
         el('span', { class: 'W' }, `100·${dec.W}`),
@@ -1755,12 +1867,16 @@ function applyTheme(theme) {
 // ---------------------------------------------------------------------------
 // boot
 
+/** Full re-render. Hides the tooltip (its cell is about to be replaced) and keeps keyboard focus. */
 function render() {
+  const focus = focusKey();
+  hideTip();
   renderHeaderStatus();
   renderTabs();
   renderFilters();
   renderMain();
   renderDrawer();
+  restoreFocus(focus);
 }
 
 function boot() {

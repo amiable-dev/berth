@@ -5,6 +5,7 @@ import { flagBool, flagString, type ParsedArgs } from '../args.js';
 import { readSessions, worktreeSlots } from '../ledger.js';
 import { policyPath, stateDir } from '../paths.js';
 import { lintPolicy, loadPolicy, type Policy, policyExists } from '../policy.js';
+import { ownerDesc } from '../reconcile.js';
 import { buildReport } from '../report.js';
 import type { CheckReport, PortRecord, State } from '../types.js';
 import {
@@ -27,8 +28,7 @@ export interface IO {
 function holderText(r: PortRecord): string {
   if (!r.live) return r.lease ? '(not bound)' : '';
   const bits = [r.live.holder];
-  if (r.live.pid !== undefined && !r.live.container && !r.live.holder.startsWith('pid '))
-    bits.push(`pid ${r.live.pid}`);
+  if (r.live.pid !== undefined && !r.live.container) bits.push(`pid ${r.live.pid}`);
   return bits.join(' ');
 }
 
@@ -138,9 +138,7 @@ export function renderWho(r: PortRecord | undefined, port: number, base: number)
     lines.push(
       `  lease    ${r.lease.project} W${r.lease.worktree} ${r.lease.role} · ${r.lease.kind} · created ${r.lease.created}${r.lease.expires ? ` · expires ${r.lease.expires}` : ''}`,
     );
-    lines.push(
-      `  owner    ${o.session_id ? `session ${shortId(o.session_id)}…` : o.tool}${o.pid ? ` pid ${o.pid}` : ''}`,
-    );
+    lines.push(`  owner    ${ownerDesc(r.lease)}${o.session_id && o.pid ? ` pid ${o.pid}` : ''}`);
     lines.push(`  cwd      ${contractHome(r.lease.cwd)}`);
   }
   if (r.live) {

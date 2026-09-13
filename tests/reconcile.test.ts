@@ -26,6 +26,7 @@ function lease(port: number, over: Partial<Lease> = {}): Lease {
 function truth(over: Partial<TruthSnapshot> = {}): TruthSnapshot {
   return {
     takenAt: new Date(NOW).toISOString(),
+    full: true,
     listeners: [],
     containers: [],
     dockerAvailable: true,

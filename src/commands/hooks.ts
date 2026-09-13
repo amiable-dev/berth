@@ -3,16 +3,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { flagString, type ParsedArgs } from '../args.js';
 import { resolveContext } from '../context.js';
-import {
-  allLeases,
-  readLeases,
-  readSession,
-  withLock,
-  writeLeases,
-  writeSession,
-} from '../ledger.js';
-import { loadPolicy, type Policy, policyExists, worktreeRange } from '../policy.js';
-import { buildReport } from '../report.js';
+import { readSession, writeSession } from '../ledger.js';
+import { blockRange, loadPolicy, type Policy, policyExists, worktreeRange } from '../policy.js';
+import { buildReportFromCache } from '../report.js';
 import type { SessionFile } from '../types.js';
 import { atomicWriteSync, nowIso, shortId } from '../util.js';
 import { envLines, rolePorts } from './allocate.js';
@@ -25,6 +18,9 @@ interface HookInput {
   reason?: string;
   source?: string;
 }
+
+/** Hooks must answer fast: total budget for SessionStart, including stdin and git. */
+export const HOOK_BUDGET_MS = 180;
 
 async function readStdin(timeoutMs: number): Promise<string> {
   if (process.stdin.isTTY) return '';
@@ -46,7 +42,7 @@ async function readStdin(timeoutMs: number): Promise<string> {
   });
 }
 
-function parseHookInput(text: string): HookInput {
+export function parseHookInput(text: string): HookInput {
   try {
     const v = JSON.parse(text) as HookInput;
     return typeof v === 'object' && v !== null ? v : {};
@@ -55,39 +51,50 @@ function parseHookInput(text: string): HookInput {
   }
 }
 
-const RULES = [
+export const RULES = [
   'Rules: pass the port explicitly (--port $PORT, vite --strictPort); never let a framework pick one.',
   'Check `berth who <port>` before binding anything else; do not kill a listener you do not own.',
   'New service: `berth claim --role <role>` or `berth claim --extra <name>`; scratch: `berth claim --dynamic 1`.',
   'Tell the human the URL you actually bound.',
 ].join(' ');
 
+function sharedLines(policy: Policy): string[] {
+  return Object.entries(policy.shared).map(
+    ([name, svc]) =>
+      `Shared ${name} (owned by ${svc.owner}; do not start another): ${Object.entries(svc.ports)
+        .map(([s, p]) => `${s} ${p}`)
+        .join(' · ')}.`,
+  );
+}
+
+/**
+ * Context for a Claude session. Read-only: no allocation (assign: false), no ledger write, no
+ * process spawned except a short git probe; live state comes from the truth cache only.
+ */
 export async function buildContextText(
   policy: Policy,
-  _sessionId: string | undefined,
   cwd: string,
-  deadlineMs: number,
+  opts: { gitTimeoutMs?: number } = {},
 ): Promise<{ text: string; exports: string[] }> {
-  const started = Date.now();
-  const ctx = await resolveContext(policy, cwd, { assign: true });
+  const ctx = await resolveContext(policy, cwd, {
+    assign: false,
+    gitTimeoutMs: opts.gitTimeoutMs ?? 120,
+  });
   const lines: string[] = ['## Ports (berth)'];
   const exports: string[] = [];
   if (!ctx.project) {
     lines.push(
-      `This directory is not a project in ${'~/.config/berth/policy.toml'}. Use \`berth claim --dynamic 1\` for a scratch port (${policy.pools.dynamic[0]}–${policy.pools.dynamic[1]}) or add the project and run \`berth doctor\`.`,
+      `This directory is not a project in ~/.config/berth/policy.toml. Use \`berth claim --dynamic 1\` for a scratch port (${policy.pools.dynamic[0]}–${policy.pools.dynamic[1]}) or add the project and run \`berth doctor\`.`,
     );
   } else if (ctx.W === null) {
     lines.push(
-      `Project ${ctx.project.name} (P=${ctx.project.P}), but worktree "${ctx.worktreeName}" has no free slot. Run \`berth worktrees prune --project ${ctx.project.name} --w <n>\` or use \`berth claim --dynamic 1\`.`,
+      `Project ${ctx.project.name} (P=${ctx.project.P}); worktree "${ctx.worktreeName}" has no W slot yet. Run \`berth env --shell\` once to assign one (or \`berth worktrees prune --project ${ctx.project.name} --w <n>\` if all ${policy.scheme.worktreeMax} are taken).`,
     );
   } else {
     const project = ctx.project;
     const W = ctx.W;
     const [lo, hi] = worktreeRange(policy, project.P, W);
-    const [blo, bhi] = [
-      policy.scheme.base + 1000 * project.P,
-      policy.scheme.base + 1000 * project.P + 999,
-    ];
+    const [blo, bhi] = blockRange(policy, project.P);
     lines.push(
       `Project ${project.name} (P=${project.P}) owns ${blo}–${bhi}. This checkout is W${W}${ctx.worktreeName ? ` (worktree ${ctx.worktreeName})` : ' (main)'} → ${lo}–${hi}.`,
     );
@@ -97,60 +104,57 @@ export async function buildContextText(
     lines.push(
       `Exported for this session: PORT (web) and ${ports.map((p) => p.env).join(', ')}; BERTH_BLOCK=${lo}-${hi}.`,
     );
-    if (project.declared.length)
+    if (project.declared.length) {
       lines.push(
         `Legacy ports this repo still hardcodes: ${project.declared.join(', ')} (migrate with \`berth env --compose-override\` or \`berth env --dotenv\`).`,
       );
-    if (Date.now() - started < deadlineMs) {
-      try {
-        const report = await buildReport({
-          policy,
-          maxAgeMs: 5000,
-          skipDocker: true,
-          skipEnv: true,
-          skipNetstat: true,
-          compact: false,
-        });
-        const mine = report.ports.filter(
-          (p) => p.project === project.name || (p.lease && p.lease.project === project.name),
-        );
-        const leases = mine.filter((p) => p.lease);
-        if (leases.length)
-          lines.push(
-            `Current leases: ${leases.map((p) => `${p.port} ${p.role} (${p.state}${p.lease?.owner.session_id ? `, session ${shortId(p.lease.owner.session_id)}…` : ''})`).join(' · ')}.`,
-          );
-        const trouble = mine.filter((p) => p.state !== 'ok' && p.state !== 'idle');
-        lines.push(
-          trouble.length
-            ? `Attention: ${trouble.map((p) => `${p.port} ${p.state}${p.live ? ` (bound by ${p.live.holder})` : ''}`).join(' · ')}.`
-            : 'No conflicts touching this project right now.',
-        );
-      } catch {
-        lines.push('(live check skipped)');
-      }
     }
-  }
-  const shared = Object.entries(policy.shared);
-  if (shared.length) {
-    for (const [name, svc] of shared) {
+    const report = buildReportFromCache(policy, 5000);
+    if (report) {
+      const mine = report.ports.filter(
+        (p) => p.project === project.name || p.lease?.project === project.name,
+      );
+      const leases = mine.filter((p) => p.lease);
+      if (leases.length) {
+        lines.push(
+          `Current leases: ${leases
+            .map(
+              (p) =>
+                `${p.port} ${p.role} (${p.state}${p.lease?.owner.session_id ? `, session ${shortId(p.lease.owner.session_id)}…` : ''})`,
+            )
+            .join(' · ')}.`,
+        );
+      }
+      const trouble = mine.filter((p) => p.state !== 'ok' && p.state !== 'idle');
       lines.push(
-        `Shared ${name} (owned by ${svc.owner}; do not start another): ${Object.entries(svc.ports)
-          .map(([s, p]) => `${s} ${p}`)
-          .join(' · ')}.`,
+        trouble.length
+          ? `Attention: ${trouble.map((p) => `${p.port} ${p.state}${p.live ? ` (bound by ${p.live.holder})` : ''}`).join(' · ')}.`
+          : 'No conflicts touching this project in the last check.',
+      );
+    } else {
+      lines.push(
+        'Live state not checked at session start (no fresh snapshot); run `berth check` when it matters.',
       );
     }
   }
+  lines.push(...sharedLines(policy));
   lines.push(RULES);
   return { text: lines.join('\n'), exports };
 }
 
-/** SessionStart hook: read-only against the ledger, always exit 0, budget ~200 ms. */
+function fallbackContext(policy: Policy | undefined, why: string): string {
+  const shared = policy ? sharedLines(policy) : [];
+  return [
+    '## Ports (berth)',
+    `berth: ${why}. Run \`berth env --shell\` for this project's ports and \`berth doctor\` if that fails.`,
+    ...shared,
+    RULES,
+  ].join('\n');
+}
+
+/** SessionStart hook: read-only against allocation state, always exit 0, hard deadline. */
 export async function cmdContext(args: ParsedArgs, io: IO): Promise<number> {
-  const raw = await readStdin(150);
-  const input = parseHookInput(raw);
-  const sessionId =
-    input.session_id ?? flagString(args.flags, 'session') ?? process.env.CLAUDE_CODE_SESSION_ID;
-  const cwd = input.cwd ?? flagString(args.flags, 'cwd') ?? process.cwd();
+  const started = Date.now();
   const emit = (text: string) => {
     io.out(
       JSON.stringify({
@@ -158,84 +162,98 @@ export async function cmdContext(args: ParsedArgs, io: IO): Promise<number> {
       }),
     );
   };
-  if (!policyExists()) {
-    emit(
-      '## Ports (berth)\nberth is installed but has no policy yet: copy examples/policy.example.toml to ~/.config/berth/policy.toml. Until then pass ports explicitly and check `lsof -nP -iTCP:<port> -sTCP:LISTEN` before binding.',
-    );
-    return 0;
-  }
+  let policy: Policy | undefined;
   try {
-    const policy = loadPolicy();
-    const { text, exports } = await buildContextText(policy, sessionId, cwd, 120);
-    const envFile = process.env.CLAUDE_ENV_FILE;
-    if (envFile && exports.length) {
+    const raw = await readStdin(100);
+    const input = parseHookInput(raw);
+    const sessionId =
+      input.session_id ?? flagString(args.flags, 'session') ?? process.env.CLAUDE_CODE_SESSION_ID;
+    const cwd = input.cwd ?? flagString(args.flags, 'cwd') ?? process.cwd();
+    if (!policyExists()) {
+      emit(
+        '## Ports (berth)\nberth is installed but has no policy yet: copy examples/policy.example.toml to ~/.config/berth/policy.toml. Until then pass ports explicitly and check `lsof -nP -iTCP:<port> -sTCP:LISTEN` before binding.',
+      );
+      return 0;
+    }
+    policy = loadPolicy();
+    if (sessionId) {
       try {
-        appendFileSync(envFile, `${exports.join('\n')}\nexport BERTH_SESSION_CONTEXT=1\n`);
+        const p = policy;
+        const ctx = await resolveContext(p, cwd, { assign: false, git: false });
+        const pid = Number(process.env.CLAUDE_PID);
+        const existing = readSession(sessionId);
+        writeSession({
+          id: sessionId,
+          tool: 'claude-code',
+          ...(Number.isInteger(pid) && pid > 0
+            ? { pid }
+            : existing?.pid
+              ? { pid: existing.pid }
+              : {}),
+          started: existing?.started ?? nowIso(),
+          ended: null,
+          cwd,
+          ...(ctx.project ? { project: ctx.project.name } : {}),
+          ...(ctx.W !== null ? { worktree: ctx.W } : {}),
+        });
+      } catch {
+        // recording the session is best-effort
+      }
+    }
+    const remaining = Math.max(20, HOOK_BUDGET_MS - (Date.now() - started));
+    const p = policy;
+    // The deadline timer must not keep the process alive once the context is built.
+    let timer: NodeJS.Timeout | undefined;
+    const deadline = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), remaining);
+    });
+    const built = await Promise.race([
+      buildContextText(p, cwd, { gitTimeoutMs: Math.min(120, remaining) }),
+      deadline,
+    ]);
+    if (timer) clearTimeout(timer);
+    if (!built) {
+      emit(fallbackContext(policy, 'context took too long'));
+      return 0;
+    }
+    const envFile = process.env.CLAUDE_ENV_FILE;
+    if (envFile && built.exports.length) {
+      try {
+        appendFileSync(envFile, `${built.exports.join('\n')}\nexport BERTH_SESSION_CONTEXT=1\n`);
       } catch {
         // env file is optional
       }
     }
-    if (sessionId) {
-      const ctx = await resolveContext(policy, cwd, { assign: false, git: false });
-      const pid = Number(process.env.CLAUDE_PID);
-      const existing = readSession(sessionId);
-      const file: SessionFile = {
-        id: sessionId,
-        tool: 'claude-code',
-        ...(Number.isInteger(pid) && pid > 0
-          ? { pid }
-          : existing?.pid
-            ? { pid: existing.pid }
-            : {}),
-        started: existing?.started ?? nowIso(),
-        ended: null,
-        cwd,
-        ...(ctx.project ? { project: ctx.project.name } : {}),
-        ...(ctx.W !== null ? { worktree: ctx.W } : {}),
-      };
-      writeSession(file);
-    }
-    emit(text);
+    emit(built.text);
   } catch (e) {
-    emit(
-      `## Ports (berth)\nberth could not build context: ${(e as Error).message}. Pass ports explicitly and check \`berth doctor\`.`,
-    );
+    emit(fallbackContext(policy, `could not build context (${(e as Error).message})`));
   }
   return 0;
 }
 
-/** SessionEnd hook: mark the session ended and soft-release its dynamic leases. */
+/**
+ * SessionEnd hook: records that the session ended, nothing else. The reconciler treats an
+ * ended session's leases as stale once nothing is bound; no ledger write is needed.
+ */
 export async function cmdSessionEnd(args: ParsedArgs, _io: IO): Promise<number> {
-  const input = parseHookInput(await readStdin(150));
-  const sessionId =
-    input.session_id ?? flagString(args.flags, 'session') ?? process.env.CLAUDE_CODE_SESSION_ID;
-  if (!sessionId) return 0;
-  const existing = readSession(sessionId);
-  writeSession({
-    id: sessionId,
-    tool: existing?.tool ?? 'claude-code',
-    ...(existing?.pid ? { pid: existing.pid } : {}),
-    started: existing?.started ?? nowIso(),
-    ended: nowIso(),
-    cwd: existing?.cwd ?? input.cwd ?? process.cwd(),
-    ...(existing?.project ? { project: existing.project } : {}),
-    ...(existing?.worktree !== undefined ? { worktree: existing.worktree } : {}),
-  });
   try {
-    await withLock({ deadlineMs: 1000, cmd: 'session-end' }, () => {
-      const ledger = readLeases();
-      let changed = false;
-      for (const l of ledger.leases) {
-        if (l.owner.session_id === sessionId && !l.ended) {
-          l.ended = nowIso();
-          if (l.kind === 'dynamic') l.expires = nowIso();
-          changed = true;
-        }
-      }
-      if (changed) writeLeases(ledger);
+    const input = parseHookInput(await readStdin(100));
+    const sessionId =
+      input.session_id ?? flagString(args.flags, 'session') ?? process.env.CLAUDE_CODE_SESSION_ID;
+    if (!sessionId) return 0;
+    const existing = readSession(sessionId);
+    writeSession({
+      id: sessionId,
+      tool: existing?.tool ?? 'claude-code',
+      ...(existing?.pid ? { pid: existing.pid } : {}),
+      started: existing?.started ?? nowIso(),
+      ended: nowIso(),
+      cwd: existing?.cwd ?? input.cwd ?? process.cwd(),
+      ...(existing?.project ? { project: existing.project } : {}),
+      ...(existing?.worktree !== undefined ? { worktree: existing.worktree } : {}),
     });
   } catch {
-    // lock busy: the session file alone is enough for the reconciler to mark leases stale
+    // never fail a session end
   }
   return 0;
 }
@@ -322,5 +340,3 @@ export async function cmdHooks(args: ParsedArgs, io: IO): Promise<number> {
   );
   return 0;
 }
-
-export const _test = { parseHookInput, RULES, allLeases };

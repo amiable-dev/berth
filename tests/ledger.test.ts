@@ -8,7 +8,9 @@ import {
   compact,
   findWorktreeSlot,
   LockTimeoutError,
+  lockIsStale,
   readLeases,
+  releaseLease,
   removeOwnClaim,
   withLock,
   worktreeSlots,
@@ -47,9 +49,9 @@ describe('ledger', () => {
   });
 
   it('claims are lock-free per session and fold into the ledger on compact', async () => {
-    addClaim('s1', lease(13001, 's1', '2026-09-13T10:00:00Z'));
-    addClaim('s2', lease(13001, 's2', '2026-09-13T10:00:01Z'));
-    addClaim('s2', lease(13005, 's2', '2026-09-13T10:00:02Z'));
+    await addClaim('s1', lease(13001, 's1', '2026-09-13T10:00:00Z'));
+    await addClaim('s2', lease(13001, 's2', '2026-09-13T10:00:01Z'));
+    await addClaim('s2', lease(13005, 's2', '2026-09-13T10:00:02Z'));
     expect(allLeases().map((l) => `${l.port}:${l.owner.session_id}`)).toEqual([
       '13001:s1',
       '13005:s2',
@@ -61,11 +63,49 @@ describe('ledger', () => {
     expect(allLeases().length).toBe(2);
   });
 
-  it('release removes from the own claim file', () => {
-    addClaim('s1', lease(13001, 's1'));
-    expect(removeOwnClaim('s1', 13001)).toBe(true);
-    expect(removeOwnClaim('s1', 13001)).toBe(false);
+  it('release removes from the own claim file', async () => {
+    await addClaim('s1', lease(13001, 's1'));
+    expect(await removeOwnClaim('s1', 13001)).toBe(true);
+    expect(await removeOwnClaim('s1', 13001)).toBe(false);
     expect(allLeases()).toEqual([]);
+  });
+
+  it('parallel claims within one session do not overwrite each other', async () => {
+    await Promise.all([
+      addClaim('s1', lease(13001, 's1')),
+      addClaim('s1', lease(13002, 's1')),
+      addClaim('s1', lease(13003, 's1')),
+    ]);
+    expect(allLeases().map((l) => l.port)).toEqual([13001, 13002, 13003]);
+  });
+
+  it("releaseLease reaches leases.json and other sessions' claim files, honouring ownership", async () => {
+    writeLeases({ version: 1, updated: '', leases: [lease(13001, 's1')] });
+    await addClaim('s2', lease(13002, 's2'));
+    expect((await releaseLease(13001, { sessionId: 's2' })).refused).toMatch(/leased by s1/);
+    expect((await releaseLease(13001, { sessionId: 's1' })).released).toBe(true);
+    expect((await releaseLease(13002, { sessionId: 's1' })).refused).toMatch(/claimed by s2/);
+    expect((await releaseLease(13002, { sessionId: 's1', force: true })).released).toBe(true);
+    expect(allLeases()).toEqual([]);
+  });
+
+  it('never breaks a lock whose holder is alive, even when its start time is unknown', () => {
+    expect(
+      lockIsStale(
+        {
+          pid: process.pid,
+          host: 'x',
+          cmd: 'me',
+          ts: new Date(Date.now() - 120_000).toISOString(),
+        },
+        120_000,
+      ).stale,
+    ).toBe(false);
+    expect(
+      lockIsStale({ pid: 999999, host: 'x', cmd: 'ghost', ts: new Date().toISOString() }, 0).stale,
+    ).toBe(true);
+    expect(lockIsStale(undefined, 31_000).stale).toBe(true);
+    expect(lockIsStale(undefined, 1_000).stale).toBe(false);
   });
 
   it('lock is exclusive, retries with jitter, and breaks a dead holder', async () => {

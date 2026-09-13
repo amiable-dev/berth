@@ -46,7 +46,7 @@ process on its own initiative.
 1. **No hook blocks a command.** The Claude Code integration is a read-only
    `SessionStart` hook that injects scoped context and exports `PORT`-style
    variables, and a `SessionEnd` hook that soft-releases dynamic leases
-   (§5.6). Neither writes the ledger; both always exit 0.
+   (§5.6). Neither writes the ledger or assigns worktree slots; each records only its own session file, and both always exit 0.
 2. **`berth check` always exits 0.** The states in ADR-004 are information,
    not gates. Each carries an advisory response (suggest `berth release`,
    offer `berth adopt`, name the squatter) and none carries an action.

@@ -40,7 +40,7 @@ export function worktreeNameUnder(
 export async function resolveContext(
   policy: Policy,
   cwd: string,
-  opts: { assign?: boolean; git?: boolean } = {},
+  opts: { assign?: boolean; git?: boolean; gitTimeoutMs?: number } = {},
 ): Promise<ResolvedContext> {
   const real = normalizeDir(cwd);
   let project = projectForPath(policy, real);

@@ -4,10 +4,19 @@ import { cmdCompact, cmdLaunchJson, cmdNames, cmdWorktrees } from './commands/ed
 import { cmdContext, cmdHooks, cmdSessionEnd } from './commands/hooks.js';
 import { cmdCheck, cmdDoctor, cmdLs, cmdWho, type IO } from './commands/query.js';
 import { cmdScan } from './commands/scan.js';
-import { LockTimeoutError } from './ledger.js';
+import { addClaim, LockTimeoutError, releaseLease } from './ledger.js';
 import { serveStdio } from './mcp.js';
-import { PolicyError } from './policy.js';
-import { run } from './util.js';
+import {
+  decodePort,
+  loadPolicy,
+  PolicyError,
+  policyExists,
+  projectByP,
+  roleName,
+} from './policy.js';
+import { currentSession } from './session.js';
+import { startUi } from './ui/server.js';
+import { nowIso, parsePort, run } from './util.js';
 import { VERSION } from './version.js';
 
 export const HELP = `berth ${VERSION} — advisory port registry for concurrent agent sessions
@@ -19,16 +28,16 @@ usage: berth <command> [options]
   check [--json] [--no-docker]                    reconcile ledger with reality; exit 0 always
   env [--shell|--dotenv|--compose-override|--json] [--worktree N] [--cwd DIR]
   claim --role R | --extra NAME | --dynamic N | --port P [--note T] [--force] [--json]
-  release --port P | --all [--session ID] [--force]
-  adopt <port> --owner human|session [--project X] [--role R]
-  free <port> [--force]                           SIGTERM an own-user listener (refuses others')
+  release --port P | --all [--force] [--json]
+  adopt <port> --owner human|session [--project X] [--role R] [--json]
+  free <port> [--force] [--json]                  SIGTERM an own-user listener (refuses others')
   scan [--write] [--project X] [--json]           find ports hardcoded in repo configs
-  compact                                         fold per-session claim files into the ledger
+  compact [--json]                                fold per-session claim files into the ledger
   context | session-end                           Claude Code hook entry points (read stdin JSON)
   hooks install|uninstall|print [--settings PATH] manage ~/.claude/settings.json hooks
   launch-json [--write] [--cwd DIR]               .claude/launch.json for the desktop preview pane
-  names list|sync [--all] [--dry-run]             portless aliases for http leases
-  worktrees list|remove|prune [--project X --w N]
+  names list|sync [--all] [--dry-run] [--json]    portless aliases for http leases
+  worktrees list|remove|prune [--project X --w N] [--json]
   mcp                                             MCP server over stdio
   ui [--port N] [--open]                          dashboard on 127.0.0.1 (default 10000)
   doctor [--json]                                 environment checks
@@ -37,16 +46,9 @@ usage: berth <command> [options]
 env: BERTH_POLICY, BERTH_CONFIG_DIR, BERTH_STATE_DIR, NO_COLOR. Exit codes: 0 ok, 1 refused/failed, 2 usage.`;
 
 async function cmdUi(args: ParsedArgs, io: IO): Promise<number> {
-  const { startUi } = await import('./ui/server.js');
-  const { addClaim, removeOwnClaim } = await import('./ledger.js');
-  const { decodePort, loadPolicy, policyExists, projectByP, roleName } = await import(
-    './policy.js'
-  );
-  const { currentSession } = await import('./session.js');
-  const { nowIso } = await import('./util.js');
   const p = flagString(args.flags, 'port');
-  const port = p === undefined ? 10000 : Number(p);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  const port = p === undefined ? 10000 : parsePort(p);
+  if (port === null) {
     io.err('--port must be 1..65535');
     return 2;
   }
@@ -61,7 +63,7 @@ async function cmdUi(args: ParsedArgs, io: IO): Promise<number> {
       const project = decoded ? projectByP(policy, decoded.P) : undefined;
       if (decoded && project) {
         const me = currentSession();
-        addClaim(me.id, {
+        await addClaim(me.id, {
           port: ui.port,
           project: project.name,
           worktree: decoded.W,
@@ -83,14 +85,18 @@ async function cmdUi(args: ParsedArgs, io: IO): Promise<number> {
     await run('open', [ui.url], { timeoutMs: 3000 });
   await new Promise<void>((resolve) => {
     const stop = () => {
-      if (claimed) removeOwnClaim(claimed.session, claimed.port);
-      ui.close().then(resolve, resolve);
+      const done = () => ui.close().then(resolve, resolve);
+      if (claimed)
+        releaseLease(claimed.port, { sessionId: claimed.session, force: true }).then(done, done);
+      else done();
     };
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
   });
   return 0;
 }
+
+const HOOK_COMMANDS = new Set(['context', 'session-end']);
 
 const COMMANDS: Record<string, (args: ParsedArgs, io: IO) => Promise<number>> = {
   ls: cmdLs,
@@ -130,11 +136,14 @@ export async function main(argv: string[]): Promise<number> {
     out: (s) => process.stdout.write(`${s}\n`),
     err: (s) => process.stderr.write(`${s}\n`),
   };
+  // Hook entry points must never fail the session: any error is reported and exit stays 0.
+  const isHook = HOOK_COMMANDS.has(argv[0] ?? '');
   let args: ParsedArgs;
   try {
     args = parseArgs(argv);
   } catch (e) {
     io.err(`berth: ${(e as Error).message}`);
+    if (isHook) return 0;
     io.err(HELP);
     return 2;
   }
@@ -155,6 +164,10 @@ export async function main(argv: string[]): Promise<number> {
   try {
     return await fn(args, io);
   } catch (e) {
+    if (isHook) {
+      io.err(`berth: ${(e as Error).message}`);
+      return 0;
+    }
     if (e instanceof PolicyError || e instanceof UsageError) {
       io.err(`berth: ${e.message}`);
       return e instanceof UsageError ? 2 : 1;

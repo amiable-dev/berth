@@ -81,7 +81,7 @@ Hook environments do not see nvm or mise shims, so the hook command must use an 
 command -v node     # e.g. /opt/homebrew/bin/node
 ```
 
-and use that path in `~/.claude/settings.json`, for example `/opt/homebrew/bin/node /ABS/PATH/TO/berth/dist/berth.js context --session "$CLAUDE_CODE_SESSION_ID" --cwd "$PWD"` for `SessionStart`. Rebuild after each change; the next session start picks up the new bundle. Hooks are read-only and must always exit 0 within 200 ms ([ADR-001](docs/adr/ADR-001-advisory-registry-not-enforcement.md), [ADR-003](docs/adr/ADR-003-daemonless-ledger-and-lock-free-claims.md)).
+and use that path in `~/.claude/settings.json`, for example `/opt/homebrew/bin/node /ABS/PATH/TO/berth/dist/berth.js context --session "$CLAUDE_CODE_SESSION_ID" --cwd "$PWD"` for `SessionStart`. Rebuild after each change; the next session start picks up the new bundle. Hooks never write allocation state (they only record their own session file), must always exit 0, and SessionStart has a hard 180 ms budget ([ADR-001](docs/adr/ADR-001-advisory-registry-not-enforcement.md), [ADR-003](docs/adr/ADR-003-daemonless-ledger-and-lock-free-claims.md)).
 
 ## Development Workflow
 

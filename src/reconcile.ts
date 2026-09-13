@@ -122,7 +122,7 @@ export function liveByPort(policy: Policy, truth: TruthSnapshot): Map<number, Li
     }
     const proj = projectForPath(policy, l.cwd);
     out.set(l.port, {
-      holder: l.cmd || (l.pid !== undefined ? `pid ${l.pid}` : 'unknown'),
+      holder: l.cmd || 'unknown process',
       tool: toolForListener(l),
       ...(l.pid !== undefined ? { pid: l.pid } : {}),
       ...(l.cwd ? { cwd: l.cwd } : {}),
@@ -161,7 +161,7 @@ function liveEvidence(port: number, live: Live, truth: TruthSnapshot): string[] 
   return ev;
 }
 
-function ownerDesc(l: Lease): string {
+export function ownerDesc(l: Lease): string {
   if (l.owner.session_id) return `session ${shortId(l.owner.session_id)}…`;
   if (l.owner.pid) return `pid ${l.owner.pid}`;
   return l.owner.tool;
@@ -177,8 +177,11 @@ function ownerAlive(l: Lease, sessions: SessionFile[]): boolean {
 }
 
 function liveMatchesLease(live: Live, lease: Lease, policy: Policy): boolean {
+  // A session marker on both sides is decisive either way.
   if (lease.owner.session_id && live.sessionId) return lease.owner.session_id === live.sessionId;
-  if (lease.owner.pid && live.pid !== undefined && !live.proxy) return lease.owner.pid === live.pid;
+  // The lease owner's pid is the claiming shell or session, not the server; equality is a
+  // positive match but inequality proves nothing.
+  if (lease.owner.pid && live.pid !== undefined && lease.owner.pid === live.pid) return true;
   if (live.project) return live.project === lease.project;
   if (live.cwd) {
     const proj = projectForPath(policy, live.cwd);

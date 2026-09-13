@@ -1,8 +1,10 @@
 import { allLeases, compact, readSessions } from './ledger.js';
+import { truthCachePath } from './paths.js';
 import { loadPolicy, type Policy } from './policy.js';
 import { reconcile } from './reconcile.js';
 import { type SnapshotOptions, snapshot } from './truth.js';
-import type { CheckReport } from './types.js';
+import type { CheckReport, TruthSnapshot } from './types.js';
+import { readJsonSync } from './util.js';
 import { VERSION } from './version.js';
 
 export interface ReportOptions extends SnapshotOptions {
@@ -35,5 +37,22 @@ export async function buildReport(opts: ReportOptions = {}): Promise<CheckReport
     truth,
     version: VERSION,
     droppedClaims: dropped,
+  });
+}
+
+/**
+ * A report from the cached truth snapshot only: no process is spawned and nothing is written.
+ * Returns undefined when there is no full snapshot younger than `maxAgeMs`. Used by hooks.
+ */
+export function buildReportFromCache(policy: Policy, maxAgeMs: number): CheckReport | undefined {
+  const cached = readJsonSync<TruthSnapshot | null>(truthCachePath(), null);
+  if (!cached?.full || !cached.takenAt || Date.now() - Date.parse(cached.takenAt) > maxAgeMs)
+    return undefined;
+  return reconcile({
+    policy,
+    leases: allLeases(),
+    sessions: readSessions(),
+    truth: cached,
+    version: VERSION,
   });
 }

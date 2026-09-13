@@ -33,7 +33,9 @@ function portOfName(name: string): number | null {
 
 /** Own-user TCP listeners via `lsof -F` (machine-readable). */
 export async function lsofListeners(): Promise<Listener[]> {
-  const r = await run('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN', '-F', 'pcn'], { timeoutMs: 6000 });
+  const r = await run('lsof', ['-nP', '+c', '0', '-iTCP', '-sTCP:LISTEN', '-F', 'pcn'], {
+    timeoutMs: 6000,
+  });
   if (r.missing) return [];
   const out: Listener[] = [];
   let pid: number | undefined;
@@ -100,7 +102,7 @@ export async function netstatListeners(): Promise<Listener[]> {
 export async function cwdForPids(pids: number[]): Promise<Map<number, string>> {
   const map = new Map<number, string>();
   if (pids.length === 0) return map;
-  const r = await run('lsof', ['-a', '-p', pids.join(','), '-d', 'cwd', '-F', 'pn'], {
+  const r = await run('lsof', ['-a', '+c', '0', '-p', pids.join(','), '-d', 'cwd', '-F', 'pn'], {
     timeoutMs: 6000,
   });
   if (r.missing) return map;
@@ -136,12 +138,6 @@ export async function sessionMarkers(
     if (claude || sid) map.set(pid, { ...(sid ? { sessionId: sid } : {}), claude });
   }
   return map;
-}
-
-export async function pidStart(pid: number): Promise<string | undefined> {
-  const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], { timeoutMs: 1500 });
-  const s = r.stdout.trim();
-  return s ? s : undefined;
 }
 
 function expandPorts(spec: string): number[] {
@@ -192,7 +188,8 @@ export async function snapshot(opts: SnapshotOptions = {}): Promise<TruthSnapsho
   const maxAge = opts.maxAgeMs ?? 0;
   if (maxAge > 0) {
     const cached = readJsonSync<TruthSnapshot | null>(truthCachePath(), null);
-    if (cached?.takenAt && Date.now() - Date.parse(cached.takenAt) <= maxAge) return cached;
+    if (cached?.full && cached.takenAt && Date.now() - Date.parse(cached.takenAt) <= maxAge)
+      return cached;
   }
   const [own, root, docker] = await Promise.all([
     lsofListeners(),
@@ -230,17 +227,21 @@ export async function snapshot(opts: SnapshotOptions = {}): Promise<TruthSnapsho
   const colima =
     docker.available &&
     (listeners.some((l) => l.cmd === 'limactl') || existsSync(path.join(os.homedir(), '.colima')));
+  const full = !opts.skipDocker && !opts.skipEnv && !opts.skipNetstat;
   const snap: TruthSnapshot = {
     takenAt: nowIso(),
+    full,
     listeners: listeners.sort((a, b) => a.port - b.port),
     containers: docker.containers,
     dockerAvailable: docker.available,
     colima,
   };
-  try {
-    atomicWriteSync(truthCachePath(), JSON.stringify(snap));
-  } catch {
-    // cache is optional
+  if (full) {
+    try {
+      atomicWriteSync(truthCachePath(), JSON.stringify(snap));
+    } catch {
+      // cache is optional
+    }
   }
   return snap;
 }

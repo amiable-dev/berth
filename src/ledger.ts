@@ -4,6 +4,7 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  renameSync,
   unlinkSync,
   writeSync,
 } from 'node:fs';
@@ -72,7 +73,9 @@ export function writeLeases(data: LeasesFile): void {
   atomicWriteSync(
     leasesPath(),
     `${JSON.stringify({ ...data, version: 1, updated: nowIso() }, null, 2)}\n`,
-    { backup: true },
+    {
+      backup: true,
+    },
   );
 }
 
@@ -86,13 +89,22 @@ interface LockMeta {
   ts: string;
 }
 
+const startCache = new Map<number, string | undefined>();
+
+/** `ps -o lstart` for a pid, memoised per process (a pid's start time never changes). */
 export function pidStartSync(pid: number): string | undefined {
+  if (startCache.has(pid)) return startCache.get(pid);
   const out = runSync('ps', ['-o', 'lstart=', '-p', String(pid)], 1500);
-  const s = out?.trim();
-  return s ? s : undefined;
+  const s = out?.trim() || undefined;
+  startCache.set(pid, s);
+  return s;
 }
 
-function lockIsStale(
+/**
+ * A lock is stale only when its holder is provably gone: pid dead, or pid reused
+ * (start time differs). A live pid is never broken. Unreadable metadata is stale after 30 s.
+ */
+export function lockIsStale(
   meta: LockMeta | undefined,
   ageMs: number,
 ): { stale: boolean; reason: string } {
@@ -103,20 +115,42 @@ function lockIsStale(
   if (start && meta.pid_start && start !== meta.pid_start) {
     return { stale: true, reason: `pid ${meta.pid} was reused (start time differs)` };
   }
-  if (!start && ageMs > 30_000) return { stale: true, reason: 'holder unverifiable for 30s' };
   return { stale: false, reason: `held by pid ${meta.pid} (${meta.cmd}) since ${meta.ts}` };
 }
 
 /**
- * Run `fn` while holding the single ledger lock. Reads never need it; it guards
- * compaction and explicit claim/release writes to leases.json.
+ * Break a stale lock without a TOCTOU: rename it to a unique name first. Only one waiter's
+ * rename succeeds; a lock re-created by another waiter in the meantime is never removed.
  */
-export async function withLock<T>(
-  opts: { deadlineMs: number; cmd: string },
-  fn: () => T | Promise<T>,
-): Promise<T> {
-  ensureDir(stateDir());
-  const file = lockPath();
+function breakLock(file: string): boolean {
+  const tomb = `${file}.stale-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    renameSync(file, tomb);
+  } catch {
+    return false;
+  }
+  try {
+    unlinkSync(tomb);
+  } catch {
+    // already gone
+  }
+  return true;
+}
+
+export interface LockOptions {
+  deadlineMs: number;
+  cmd: string;
+  /** Lock file; defaults to the ledger lock. Claim files use a per-session lock. */
+  file?: string;
+}
+
+/**
+ * Run `fn` while holding a lock file. Reads never need the ledger lock; it guards
+ * compaction and explicit writes to leases.json. Claim files take their own per-session lock.
+ */
+export async function withLock<T>(opts: LockOptions, fn: () => T | Promise<T>): Promise<T> {
+  const file = opts.file ?? lockPath();
+  ensureDir(path.dirname(file));
   const started = Date.now();
   let delay = 10;
   let holder = '';
@@ -150,16 +184,11 @@ export async function withLock<T>(
       const verdict = lockIsStale(meta, ageMs);
       holder = verdict.reason;
       if (verdict.stale) {
-        try {
-          unlinkSync(file);
-        } catch {
-          // someone else broke it first
-        }
+        breakLock(file);
         continue;
       }
-      if (Date.now() - started >= opts.deadlineMs) {
-        throw new LockTimeoutError(`ledger lock busy: ${holder}`);
-      }
+      if (Date.now() - started >= opts.deadlineMs)
+        throw new LockTimeoutError(`lock busy: ${holder}`);
       await sleep(delay + Math.floor(Math.random() * delay * 0.5));
       delay = Math.min(250, delay * 2);
     }
@@ -175,14 +204,20 @@ export async function withLock<T>(
   }
 }
 
-// ---- per-session claim files (lock-free) ------------------------------------
+// ---- per-session claim files ---------------------------------------------------
+// Sessions never contend with each other; a session's own parallel commands serialise on
+// a tiny per-session lock so two claims in flight cannot overwrite each other's file.
+
+export function safeName(id: string): string {
+  return id.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120) || 'unknown';
+}
 
 function claimFile(sessionId: string): string {
   return path.join(claimsDir(), `${safeName(sessionId)}.json`);
 }
 
-export function safeName(id: string): string {
-  return id.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120) || 'unknown';
+function claimLock(sessionId: string): string {
+  return path.join(claimsDir(), `.${safeName(sessionId)}.lock`);
 }
 
 export function readClaims(): ClaimFile[] {
@@ -206,42 +241,34 @@ export function readOwnClaims(sessionId: string): ClaimFile {
   });
 }
 
-export function writeOwnClaims(sessionId: string, leases: Lease[]): void {
+function writeOwnClaimsUnlocked(sessionId: string, leases: Lease[]): void {
   ensureDir(claimsDir());
-  const file = claimFile(sessionId);
   const data: ClaimFile = { version: 1, sessionId, updated: nowIso(), leases };
-  const text = `${JSON.stringify(data, null, 2)}\n`;
-  if (!existsSync(file)) {
-    // First write: O_EXCL so two processes claiming for the same session id cannot clobber each other.
-    try {
-      const fd = openSync(file, 'wx', 0o600);
-      try {
-        writeSync(fd, text);
-      } finally {
-        closeSync(fd);
-      }
-      return;
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-    }
-  }
-  atomicWriteSync(file, text);
+  atomicWriteSync(claimFile(sessionId), `${JSON.stringify(data, null, 2)}\n`);
 }
 
-export function addClaim(sessionId: string, lease: Lease): void {
-  const own = readOwnClaims(sessionId);
-  const leases = own.leases.filter((l) => l.port !== lease.port);
-  leases.push(lease);
-  writeOwnClaims(sessionId, leases);
+async function withClaimLock<T>(sessionId: string, cmd: string, fn: () => T): Promise<T> {
+  ensureDir(claimsDir());
+  return withLock({ deadlineMs: 3000, cmd, file: claimLock(sessionId) }, fn);
 }
 
-export function removeOwnClaim(sessionId: string, port: number): boolean {
-  const own = readOwnClaims(sessionId);
-  const before = own.leases.length;
-  const leases = own.leases.filter((l) => l.port !== port);
-  if (leases.length === before) return false;
-  writeOwnClaims(sessionId, leases);
-  return true;
+export async function addClaim(sessionId: string, lease: Lease): Promise<void> {
+  await withClaimLock(sessionId, 'claim', () => {
+    const own = readOwnClaims(sessionId);
+    const leases = own.leases.filter((l) => l.port !== lease.port);
+    leases.push(lease);
+    writeOwnClaimsUnlocked(sessionId, leases);
+  });
+}
+
+export async function removeOwnClaim(sessionId: string, port: number): Promise<boolean> {
+  return withClaimLock(sessionId, 'release', () => {
+    const own = readOwnClaims(sessionId);
+    const leases = own.leases.filter((l) => l.port !== port);
+    if (leases.length === own.leases.length) return false;
+    writeOwnClaimsUnlocked(sessionId, leases);
+    return true;
+  });
 }
 
 /** leases.json plus not-yet-compacted claims. leases.json wins on a port collision. */
@@ -260,10 +287,17 @@ export interface CompactResult {
   dropped: { port: number; sessionId: string; reason: string }[];
 }
 
-/** Fold claim files into leases.json under the lock. Safe to run at any time. */
+function hasClaimFiles(): boolean {
+  const dir = claimsDir();
+  if (!existsSync(dir)) return false;
+  return readdirSync(dir).some((f) => f.endsWith('.json') && !f.startsWith('.'));
+}
+
+/** Fold claim files into leases.json under the lock. Cheap when there is nothing to fold. */
 export async function compact(opts: { deadlineMs?: number } = {}): Promise<CompactResult> {
+  const result: CompactResult = { folded: 0, dropped: [] };
+  if (!hasClaimFiles()) return result;
   return withLock({ deadlineMs: opts.deadlineMs ?? 3000, cmd: 'compact' }, () => {
-    const result: CompactResult = { folded: 0, dropped: [] };
     const claims = readClaims();
     if (claims.length === 0) return result;
     const ledger = readLeases();
@@ -310,6 +344,54 @@ export async function compact(opts: { deadlineMs?: number } = {}): Promise<Compa
 
 export function ownerKey(l: Lease): string {
   return l.owner.session_id ?? (l.owner.pid ? `pid:${l.owner.pid}` : `${l.owner.tool}`);
+}
+
+export interface ReleaseResult {
+  released: boolean;
+  refused?: string;
+}
+
+/**
+ * Release one port everywhere it can live: leases.json (under the ledger lock) and every
+ * claim file that still carries it. Only the owning session may release unless forced.
+ */
+export async function releaseLease(
+  port: number,
+  opts: { sessionId: string; force?: boolean },
+): Promise<ReleaseResult> {
+  let released = false;
+  let refused: string | undefined;
+  const allowed = (l: Lease) => opts.force === true || l.owner.session_id === opts.sessionId;
+  await withLock({ deadlineMs: 3000, cmd: 'release' }, () => {
+    const ledger = readLeases();
+    const keep: Lease[] = [];
+    for (const l of ledger.leases) {
+      if (l.port !== port) {
+        keep.push(l);
+        continue;
+      }
+      if (!allowed(l)) {
+        refused = `${port} is leased by ${ownerKey(l)}; pass --force to release it`;
+        keep.push(l);
+        continue;
+      }
+      released = true;
+    }
+    if (released) {
+      ledger.leases = keep;
+      writeLeases(ledger);
+    }
+  });
+  for (const c of readClaims()) {
+    const mine = c.leases.filter((l) => l.port === port);
+    if (mine.length === 0) continue;
+    if (!mine.every(allowed)) {
+      refused = refused ?? `${port} is claimed by ${c.sessionId}; pass --force to release it`;
+      continue;
+    }
+    if (await removeOwnClaim(c.sessionId, port)) released = true;
+  }
+  return { released, ...(refused && !released ? { refused } : {}) };
 }
 
 // ---- sessions ----------------------------------------------------------------
@@ -407,4 +489,8 @@ export function pruneWorktreeSlot(project: string, W: number): boolean {
   if (!existsSync(file)) return false;
   unlinkSync(file);
   return true;
+}
+
+export function stateDirPath(): string {
+  return stateDir();
 }

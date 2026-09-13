@@ -2,16 +2,7 @@ import path from 'node:path';
 import { flagBool, flagString, type ParsedArgs } from '../args.js';
 import { composeServices, findComposeFile, inferRole, renderOverride } from '../compose.js';
 import { type ResolvedContext, resolveContext } from '../context.js';
-import {
-  addClaim,
-  allLeases,
-  compact,
-  pidStartSync,
-  readLeases,
-  removeOwnClaim,
-  withLock,
-  writeLeases,
-} from '../ledger.js';
+import { addClaim, allLeases, compact, ownerKey, pidStartSync, releaseLease } from '../ledger.js';
 import { overridesDir } from '../paths.js';
 import {
   inDynamicPool,
@@ -22,13 +13,15 @@ import {
   portFor,
   projectByName,
   projectForPath,
+  roleName,
   roleNumber,
   worktreeRange,
 } from '../policy.js';
+import { ownerDesc } from '../reconcile.js';
 import { buildReport } from '../report.js';
 import { currentSession } from '../session.js';
 import type { Lease, LeaseKind, PortRecord } from '../types.js';
-import { atomicWriteSync, isValidPort, nowIso, parsePort, pidAlive, sleep } from '../util.js';
+import { atomicWriteSync, nowIso, parsePort, pidAlive, sleep } from '../util.js';
 import type { IO } from './query.js';
 
 export function envName(role: string): string {
@@ -44,10 +37,12 @@ export interface RolePort {
 
 export function rolePorts(policy: Policy, project: Project, W: number): RolePort[] {
   const out: RolePort[] = [];
-  for (const [role, R] of Object.entries(policy.scheme.roles))
+  for (const [role, R] of Object.entries(policy.scheme.roles)) {
     out.push({ role, R, port: portFor(policy, project.P, W, R), env: envName(role) });
-  for (const [role, R] of Object.entries(project.extras))
+  }
+  for (const [role, R] of Object.entries(project.extras)) {
     out.push({ role, R, port: portFor(policy, project.P, W, R), env: envName(role) });
+  }
   return out.sort((a, b) => a.R - b.R);
 }
 
@@ -71,11 +66,12 @@ export function envLines(
     ['BERTH_BLOCK', `${lo}-${hi}`],
   );
   for (const [name, svc] of Object.entries(policy.shared)) {
-    for (const [service, port] of Object.entries(svc.ports))
+    for (const [service, port] of Object.entries(svc.ports)) {
       pairs.push([
         `BERTH_SHARED_${name.toUpperCase()}_${service.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`,
         String(port),
       ]);
+    }
   }
   return pairs.map(([k, v]) => (format === 'shell' ? `export ${k}=${shellQuote(v)}` : `${k}=${v}`));
 }
@@ -205,6 +201,7 @@ function makeLease(
     kind === 'dynamic'
       ? new Date(Date.now() + policy.pools.ttlHours * 3600_000).toISOString()
       : null;
+  const pidStart = pidStartSync(s.pid);
   return {
     port,
     project: project.name,
@@ -215,7 +212,7 @@ function makeLease(
       session_id: s.id,
       tool: s.tool,
       pid: s.pid,
-      ...(pidStartSync(s.pid) ? { pid_start: pidStartSync(s.pid) as string } : {}),
+      ...(pidStart ? { pid_start: pidStart } : {}),
     },
     cwd: ctx.worktreePath ?? ctx.cwd,
     created: nowIso(),
@@ -224,22 +221,20 @@ function makeLease(
   };
 }
 
-async function guardPort(
+function guardPort(
   report: Awaited<ReturnType<typeof buildReport>>,
   port: number,
   mine: string,
   force: boolean,
   io: IO,
-): Promise<boolean> {
+): boolean {
   const rec: PortRecord | undefined = report.ports.find((p) => p.port === port);
   if (!rec) return true;
-  if (rec.lease && rec.lease.owner.session_id !== mine) {
-    if (!force) {
-      io.err(
-        `${port} is already leased by ${rec.lease.owner.session_id ?? rec.lease.owner.tool} (${rec.state}); pass --force to claim it anyway`,
-      );
-      return false;
-    }
+  if (rec.lease && rec.lease.owner.session_id !== mine && !force) {
+    io.err(
+      `${port} is already leased by ${ownerDesc(rec.lease)} (${rec.state}); pass --force to claim it anyway`,
+    );
+    return false;
   }
   if (rec.live && rec.live.sessionId !== mine && !force) {
     io.err(
@@ -248,6 +243,21 @@ async function guardPort(
     return false;
   }
   return true;
+}
+
+/** Fold claims and confirm the caller's lease survived (an older claim by another session wins). */
+async function settleClaim(
+  sessionId: string,
+  port: number,
+): Promise<{ ok: boolean; holder?: string }> {
+  try {
+    await compact({ deadlineMs: 500 });
+  } catch {
+    // lock busy: the claim file still counts; a later compaction settles duplicates
+  }
+  const now = allLeases().find((l) => l.port === port);
+  if (now && now.owner.session_id === sessionId) return { ok: true };
+  return { ok: false, ...(now ? { holder: ownerKey(now) } : {}) };
 }
 
 export async function cmdClaim(args: ParsedArgs, io: IO): Promise<number> {
@@ -296,31 +306,32 @@ export async function cmdClaim(args: ParsedArgs, io: IO): Promise<number> {
           candidates.push(p);
       }
       if (candidates.length === 0) break;
-      for (const p of candidates)
-        addClaim(me.id, makeLease(policy, pseudo, p, 'dynamic', 'dynamic', note, sessionOverride));
-      try {
-        const r = await compact({ deadlineMs: 500 });
-        for (const d of r.dropped) if (d.sessionId === me.id) taken.add(d.port);
-      } catch {
-        // lock busy: the claim files still count; a later compaction settles duplicates
+      for (const p of candidates) {
+        await addClaim(
+          me.id,
+          makeLease(policy, pseudo, p, 'dynamic', 'dynamic', note, sessionOverride),
+        );
       }
-      const mine = new Set(
-        allLeases()
-          .filter((l) => l.owner.session_id === me.id)
-          .map((l) => l.port),
-      );
-      for (const p of candidates) if (mine.has(p)) granted.push(p);
+      for (const p of candidates) {
+        const settled = await settleClaim(me.id, p);
+        if (settled.ok) granted.push(p);
+        else taken.add(p);
+      }
       if (granted.length < n) await sleep(20);
     }
     if (granted.length === 0) {
       io.err('no free port in the dynamic pool');
       return 1;
     }
-    if (flagBool(args.flags, 'json'))
+    if (flagBool(args.flags, 'json')) {
       io.out(
-        JSON.stringify({ session: me.id, ports: granted, expires: policy.pools.ttlHours }, null, 2),
+        JSON.stringify(
+          { session: me.id, ports: granted, ttlHours: policy.pools.ttlHours },
+          null,
+          2,
+        ),
       );
-    else io.out(granted.join('\n'));
+    } else io.out(granted.join('\n'));
     return 0;
   }
 
@@ -332,7 +343,7 @@ export async function cmdClaim(args: ParsedArgs, io: IO): Promise<number> {
   const extra = flagString(args.flags, 'extra');
   const role = flagString(args.flags, 'role');
   let port: number;
-  let roleName: string;
+  let leaseRole: string;
   let kind: LeaseKind = 'block';
   if (explicit !== undefined) {
     const p = parsePort(explicit);
@@ -350,8 +361,8 @@ export async function cmdClaim(args: ParsedArgs, io: IO): Promise<number> {
     }
     port = p;
     kind = inOwn ? 'block' : inDynamicPool(policy, p) ? 'dynamic' : 'declared';
-    roleName = inOwn
-      ? roleNameFor(policy, project, p - lo)
+    leaseRole = inOwn
+      ? roleName(policy, project, p - lo)
       : (role ?? (kind === 'dynamic' ? 'dynamic' : 'declared'));
   } else if (extra !== undefined) {
     if (!/^[a-z][a-z0-9-]{0,31}$/.test(extra)) {
@@ -361,9 +372,11 @@ export async function cmdClaim(args: ParsedArgs, io: IO): Promise<number> {
     let R = project.extras[extra];
     if (R === undefined) {
       const usedR = new Set<number>(Object.values(project.extras));
-      for (const l of allLeases())
+      const lo = worktreeRange(policy, project.P, W)[0];
+      for (const l of allLeases()) {
         if (l.project === project.name && l.worktree === W && l.kind === 'block')
-          usedR.add(l.port - worktreeRange(policy, project.P, W)[0]);
+          usedR.add(l.port - lo);
+      }
       R = 10;
       while (usedR.has(R) && R <= 99) R++;
       if (R > 99) {
@@ -375,7 +388,7 @@ export async function cmdClaim(args: ParsedArgs, io: IO): Promise<number> {
       );
     }
     port = portFor(policy, project.P, W, R);
-    roleName = extra;
+    leaseRole = extra;
   } else if (role !== undefined) {
     const R = roleNumber(policy, project, role);
     if (R === undefined) {
@@ -385,89 +398,62 @@ export async function cmdClaim(args: ParsedArgs, io: IO): Promise<number> {
       return 2;
     }
     port = portFor(policy, project.P, W, R);
-    roleName = role;
+    leaseRole = role;
   } else {
     io.err('usage: berth claim --role <role> | --extra <name> | --dynamic <n> | --port <port>');
     return 2;
   }
-  if (!(await guardPort(report, port, me.id, force, io))) return 1;
-  addClaim(me.id, makeLease(policy, ctx, port, roleName, kind, note, sessionOverride));
-  try {
-    await compact({ deadlineMs: 500 });
-  } catch {
-    // fine; compaction happens on the next read
+  if (!guardPort(report, port, me.id, force, io)) return 1;
+  await addClaim(me.id, makeLease(policy, ctx, port, leaseRole, kind, note, sessionOverride));
+  const settled = await settleClaim(me.id, port);
+  if (!settled.ok) {
+    io.err(
+      `${port} was claimed first by ${settled.holder ?? 'another session'}; your claim was dropped`,
+    );
+    return 1;
   }
-  if (flagBool(args.flags, 'json'))
+  if (flagBool(args.flags, 'json')) {
     io.out(
       JSON.stringify(
         {
           port,
-          role: roleName,
+          role: leaseRole,
           kind,
           project: project.name,
           W,
           session: me.id,
-          env: envName(roleName),
+          env: envName(leaseRole),
         },
         null,
         2,
       ),
     );
-  else io.out(`${port}  ${roleName}  ${project.name} W${W}  (export ${envName(roleName)}=${port})`);
+  } else
+    io.out(`${port}  ${leaseRole}  ${project.name} W${W}  (export ${envName(leaseRole)}=${port})`);
   return 0;
 }
 
-function roleNameFor(policy: Policy, project: Project, R: number): string {
-  for (const [n, r] of Object.entries(policy.scheme.roles)) if (r === R) return n;
-  for (const [n, r] of Object.entries(project.extras)) if (r === R) return n;
-  return `slot-${String(R).padStart(2, '0')}`;
-}
-
 export async function cmdRelease(args: ParsedArgs, io: IO): Promise<number> {
-  const sessionOverride = flagString(args.flags, 'session');
-  const me = currentSession(sessionOverride);
+  const me = currentSession(flagString(args.flags, 'session'));
   const force = flagBool(args.flags, 'force');
   const all = flagBool(args.flags, 'all');
   const portFlag = flagString(args.flags, 'port') ?? args.positional[0];
   const port = portFlag !== undefined ? parsePort(portFlag) : null;
   if (!all && port === null) {
-    io.err('usage: berth release --port <port> | --all [--session <id>] [--force]');
+    io.err('usage: berth release --port <port> | --all [--force] [--json]');
     return 2;
   }
+  const targets = all
+    ? allLeases()
+        .filter((l) => l.owner.session_id === me.id)
+        .map((l) => l.port)
+    : [port as number];
   const released: number[] = [];
   const refused: string[] = [];
-  await withLock({ deadlineMs: 3000, cmd: 'release' }, () => {
-    const ledger = readLeases();
-    const keep: Lease[] = [];
-    for (const l of ledger.leases) {
-      const match = all ? l.owner.session_id === me.id : l.port === port;
-      if (!match) {
-        keep.push(l);
-        continue;
-      }
-      if (l.owner.session_id !== me.id && !force) {
-        refused.push(
-          `${l.port} is leased by ${l.owner.session_id ?? l.owner.tool}; pass --force to release it`,
-        );
-        keep.push(l);
-        continue;
-      }
-      released.push(l.port);
-    }
-    if (released.length > 0) {
-      ledger.leases = keep;
-      writeLeases(ledger);
-    }
-  });
-  if (port !== null && removeOwnClaim(me.id, port) && !released.includes(port)) released.push(port);
-  if (all) {
-    for (const l of allLeases())
-      if (
-        l.owner.session_id === me.id &&
-        removeOwnClaim(me.id, l.port) &&
-        !released.includes(l.port)
-      )
-        released.push(l.port);
+  for (const p of targets) {
+    const r = await releaseLease(p, { sessionId: me.id, force });
+    if (r.released) released.push(p);
+    else if (r.refused) refused.push(r.refused);
   }
   for (const r of refused) io.err(r);
   if (flagBool(args.flags, 'json')) io.out(JSON.stringify({ released, refused }, null, 2));
@@ -511,29 +497,28 @@ export async function cmdAdopt(args: ParsedArgs, io: IO): Promise<number> {
   const role =
     flagString(args.flags, 'role') ??
     rec?.role ??
-    (kind === 'block' && decoded ? roleNameFor(policy, project, decoded.R) : kind);
+    (kind === 'block' && decoded ? roleName(policy, project, decoded.R) : kind);
   const ctx: ResolvedContext = {
     cwd: rec?.live?.cwd ?? project.path,
     project,
     W: decoded && decoded.P === project.P ? decoded.W : 0,
     via: 'path',
   };
-  const sessionId =
-    owner === 'session'
-      ? currentSession(flagString(args.flags, 'session')).id
-      : `human-${currentSession().id.replace(/^human-/, '')}`;
+  const me = currentSession(flagString(args.flags, 'session'));
+  const sessionId = owner === 'session' ? me.id : `human-${me.id.replace(/^human-/, '')}`;
   const lease = makeLease(policy, ctx, port, role, kind, flagString(args.flags, 'note'), sessionId);
-  if (owner === 'human')
+  if (owner === 'human') {
     lease.owner = {
       session_id: sessionId,
       tool: 'human',
       ...(rec?.live?.pid ? { pid: rec.live.pid } : {}),
     };
-  addClaim(sessionId, lease);
-  try {
-    await compact({ deadlineMs: 500 });
-  } catch {
-    // fine
+  }
+  await addClaim(sessionId, lease);
+  const settled = await settleClaim(sessionId, port);
+  if (!settled.ok) {
+    io.err(`${port} was claimed first by ${settled.holder ?? 'another session'}`);
+    return 1;
   }
   io.out(
     flagBool(args.flags, 'json')
@@ -546,63 +531,62 @@ export async function cmdAdopt(args: ParsedArgs, io: IO): Promise<number> {
 export async function cmdFree(args: ParsedArgs, io: IO): Promise<number> {
   const port = parsePort(args.positional[0]);
   if (port === null) {
-    io.err('usage: berth free <port> [--force]');
+    io.err('usage: berth free <port> [--force] [--json]');
     return 2;
   }
   const force = flagBool(args.flags, 'force');
-  const me = currentSession(flagString(args.flags, 'session'));
+  const json = flagBool(args.flags, 'json');
+  // Ownership is decided by the real caller; --session is deliberately not honoured here.
+  const me = currentSession();
   const report = await buildReport();
   const rec = report.ports.find((p) => p.port === port);
-  if (!rec?.live) {
-    io.out(`${port}: nothing is bound`);
-    return 0;
-  }
+  const result = (code: number, message: string, extra: Record<string, unknown> = {}) => {
+    if (json) io.out(JSON.stringify({ port, ok: code === 0, message, ...extra }, null, 2));
+    else (code === 0 ? io.out : io.err)(message);
+    return code;
+  };
+  if (!rec?.live) return result(0, `${port}: nothing is bound`);
   const live = rec.live;
   if (live.container) {
-    io.err(
+    return result(
+      1,
       `${port} is published by container ${live.container}; stop it with docker (berth never stops containers)`,
     );
-    return 1;
   }
-  if (live.proxy || live.pid === undefined) {
-    io.err(`${port} is held by ${live.holder} without an owned pid; berth cannot free it`);
-    return 1;
+  const pid = live.pid;
+  if (live.proxy || pid === undefined || !Number.isInteger(pid) || pid <= 1) {
+    return result(
+      1,
+      `${port} is held by ${live.holder} without an owned pid; berth cannot free it`,
+    );
   }
-  const otherSession = live.sessionId && live.sessionId !== me.id;
+  const otherSession = live.sessionId !== undefined && live.sessionId !== me.id;
   const otherLease =
-    rec.lease &&
+    rec.lease !== null &&
     rec.lease.owner.session_id !== me.id &&
     (rec.state === 'ok' || rec.state === 'idle');
   if ((otherSession || otherLease) && !force) {
-    io.err(
-      `${port} belongs to ${live.sessionId ? `session ${live.sessionId.slice(0, 8)}…` : (rec.lease?.owner.session_id ?? 'another owner')}; refusing. Pass --force only if you are sure.`,
-    );
-    return 1;
+    const who = live.sessionId
+      ? `session ${live.sessionId.slice(0, 8)}…`
+      : rec.lease
+        ? ownerDesc(rec.lease)
+        : 'another owner';
+    return result(1, `${port} belongs to ${who}; refusing. Pass --force only if you are sure.`);
   }
   try {
-    process.kill(live.pid, 'SIGTERM');
+    process.kill(pid, 'SIGTERM');
   } catch (e) {
-    io.err(`cannot signal pid ${live.pid}: ${(e as Error).message}`);
-    return 1;
+    return result(1, `cannot signal pid ${pid}: ${(e as Error).message}`);
   }
   const deadline = Date.now() + 3000;
-  while (Date.now() < deadline && pidAlive(live.pid)) await sleep(100);
-  if (pidAlive(live.pid)) {
-    if (!force) {
-      io.err(`pid ${live.pid} ignored SIGTERM; rerun with --force to SIGKILL`);
-      return 1;
-    }
+  while (Date.now() < deadline && pidAlive(pid)) await sleep(100);
+  if (pidAlive(pid)) {
+    if (!force) return result(1, `pid ${pid} ignored SIGTERM; rerun with --force to SIGKILL`);
     try {
-      process.kill(live.pid, 'SIGKILL');
+      process.kill(pid, 'SIGKILL');
     } catch {
       // gone between checks
     }
   }
-  io.out(`freed ${port} (${live.holder} pid ${live.pid})`);
-  return 0;
-}
-
-export function assertPort(n: unknown): number {
-  if (!isValidPort(n)) throw new Error('invalid port');
-  return n;
+  return result(0, `freed ${port} (${live.holder} pid ${pid})`, { pid, holder: live.holder });
 }

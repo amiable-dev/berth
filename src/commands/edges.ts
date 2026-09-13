@@ -173,19 +173,26 @@ export async function cmdNames(args: ParsedArgs, io: IO): Promise<number> {
     return 0;
   }
   const dry = flagBool(args.flags, 'dry-run');
+  const json = flagBool(args.flags, 'json');
+  const results: { name: string; port: number; ok: boolean; error?: string }[] = [];
   for (const l of leases) {
     const slot =
       l.worktree > 0 ? worktreeSlots(l.project).find((s) => s.W === l.worktree)?.name : undefined;
     const name = aliasName(l.project, l.role, slot);
     if (dry) {
-      io.out(`portless alias ${name} ${l.port}`);
+      results.push({ name, port: l.port, ok: true });
+      if (!json) io.out(`portless alias ${name} ${l.port}`);
       continue;
     }
     const r = await run('portless', ['alias', name, String(l.port)], { timeoutMs: 8000 });
-    io.out(
-      `${r.code === 0 ? 'ok  ' : 'fail'} ${name}.localhost -> ${l.port}${r.code === 0 ? '' : `: ${(r.stderr || r.stdout).trim()}`}`,
-    );
+    const err = (r.stderr || r.stdout).trim();
+    results.push({ name, port: l.port, ok: r.code === 0, ...(r.code === 0 ? {} : { error: err }) });
+    if (!json)
+      io.out(
+        `${r.code === 0 ? 'ok  ' : 'fail'} ${name}.localhost -> ${l.port}${r.code === 0 ? '' : `: ${err}`}`,
+      );
   }
+  if (json) io.out(JSON.stringify(results, null, 2));
   return 0;
 }
 
@@ -194,6 +201,14 @@ export async function cmdWorktrees(args: ParsedArgs, io: IO): Promise<number> {
   const sub = args.positional[0] ?? 'list';
   const projectName = flagString(args.flags, 'project');
   if (sub === 'list') {
+    if (flagBool(args.flags, 'json')) {
+      const all = Object.values(policy.projects)
+        .filter((p) => !projectName || p.name === projectName)
+        .map((p) => ({ project: p.name, slots: worktreeSlots(p.name) }))
+        .filter((x) => x.slots.length > 0);
+      io.out(JSON.stringify(all, null, 2));
+      return 0;
+    }
     for (const p of Object.values(policy.projects).sort((a, b) => a.P - b.P)) {
       if (projectName && p.name !== projectName) continue;
       const slots = worktreeSlots(p.name);

@@ -169,6 +169,8 @@ export interface Container {
 
 export interface TruthSnapshot {
   takenAt: string;
+  /** True when every source ran (no skip flags); only full snapshots are cached and served from cache. */
+  full: boolean;
   listeners: Listener[];
   containers: Container[];
   dockerAvailable: boolean;

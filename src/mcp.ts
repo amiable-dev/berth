@@ -1,5 +1,5 @@
 import { parseArgs } from './args.js';
-import { cmdClaim, cmdRelease } from './commands/allocate.js';
+import { cmdClaim, cmdEnv, cmdRelease } from './commands/allocate.js';
 import { renderCheck, renderWho } from './commands/query.js';
 import { buildReport } from './report.js';
 import { isValidPort } from './util.js';
@@ -149,7 +149,6 @@ export async function callTool(
       return textResult(r.code === 0 ? r.out : r.err || r.out, r.code !== 0);
     }
     case 'berth_env': {
-      const { cmdEnv } = await import('./commands/allocate.js');
       const argv = ['env', '--json'];
       if (typeof params.cwd === 'string') argv.push('--cwd', params.cwd);
       const r = await captureCli(cmdEnv, argv);
