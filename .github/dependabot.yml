@@ -25,6 +25,9 @@ updates:
       # together with `engines.node`.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # vitest 5 requires Node >= 22.12; take it together with the engine bump.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
     labels:
       - "dependencies"
     commit-message:
