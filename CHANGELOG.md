@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-13
+
+**Review fixes, a map that shows what is actually running, and a README people can start from.** Everything an eight-angle code review of 0.1.0 found is fixed; the dashboard map now surfaces legacy ports per project; the README leads with the decode plate and a day-to-day guide.
+
+### Added
+
+- Map view: each project row starts with a `legacy` group, one numbered cell per live or declared port outside the block scheme, coloured and hatched by state with the same tooltip and drawer as block cells; rows light up when anything is bound.
+- Dashboard deep links: `?view=map|table|sessions|rules|term` and `?theme=light|dark` (a theme from a link is not persisted).
+- `--json` on `free`, `names sync`, `worktrees list`; `compact --json`.
+- README with the decode plate and real dashboard captures, a plain overview and a day-to-day section; `docs/images/README.md` documents how the captures are made.
+
+### Changed
+
+- The SessionStart hook is read-only against allocation state: it no longer assigns worktree slots or takes truth snapshots, races a hard 180 ms deadline, and always exits 0. SessionEnd only records its session file; the reconciler already treats an ended session's unbound leases as stale.
+- `berth claim` and `berth adopt` report exit 1 when compaction dropped the claim because an older claim by another session holds the port; the dynamic pool retries other ports.
+- `berth release` reaches leases that still live in another session's un-compacted claim file.
+- `berth ui` releases its own lease through the ledger when it stops.
+- A session's lease list contains only ports present in the report; ephemeral listeners that merely carry the session marker are attribution evidence.
+- The release workflow skips `npm publish` when the version is already on the registry, so re-running a tag and the hand-published first release are both safe.
+- Dependabot ignores `@types/node` and `vitest` majors; both move with `engines.node`.
+
+### Fixed
+
+- Ledger lock: stale locks are broken by rename, so two waiters can no longer both break a dead holder and one remove the other's live lock; a live pid's lock is never broken, even when its start time cannot be read.
+- Parallel `berth claim` calls within one session no longer overwrite each other's claim file (per-session claim lock).
+- A lease claimed from a shell is no longer reported as `conflict` when the server it started has a different pid and no session marker.
+- `berth free` no longer honours a `--session` override that bypassed the other-session refusal, and validates the pid before signalling.
+- Degraded truth snapshots (docker, netstat or session markers skipped) are neither cached nor served from cache.
+- `adopt --owner human` records the user, never a Claude session id; human pseudo-sessions count as alive while their lease pids are.
+- netstat rows on macOS that carry a `process:pid` token are parsed correctly; `lsof` runs with `+c 0`.
+- The dashboard derives the block base, ranges and pools from the report instead of hardcoding 10000/40000, skips re-rendering when the report is unchanged (keeps focus and hover), and composes holder text from fields.
+
 ## [0.1.0] - 2026-09-13
 
 **Initial release.** The council-reviewed design in `docs/DESIGN.md`, recorded as ADR-001 to ADR-005, implemented end to end: policy and port scheme, ledger, reconciler, CLI, Claude Code hooks, dashboard, MCP server and the portless / launch.json edges.
@@ -32,5 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/amiable-dev/berth/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/amiable-dev/berth/releases/tag/v0.1.0
