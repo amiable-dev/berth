@@ -1,0 +1,130 @@
+# Draft ~/.config/berth/policy.toml for this machine, generated from the repos under ~/projects
+# on 2026-09-13. Project numbers (P) were confirmed the same day and are permanent.
+#
+# port = 10000 + 1000*P + 100*W + R
+#   P project 0-29 (hand-assigned)   W worktree 0-9 (0 = main checkout)   R role 00-99
+
+[scheme]
+base = 10000
+project_max = 29
+worktree_max = 9
+roles = { web = 0, api = 1, db = 2, cache = 3, smtp = 4, mail-ui = 5, docs = 6, worker = 7, otlp-grpc = 8, otlp-http = 9 }
+
+[pools]
+dynamic = "40000-41999"
+ttl_hours = 8
+
+[reserved]
+ranges = ["0-1023", "4000-4999", "49152-65535"]   # privileged, portless wrapper mode, macOS ephemeral
+ports  = [5000, 7000]                              # macOS AirPlay receiver (ControlCenter)
+lint   = [11211, 11434, 15672, 16686, 19999, 27017] # well-known defaults inside the block range
+
+[shared.observability]
+owner = "skills-telemetry"
+ports = { grafana = 3000, langfuse = 3001, tempo = 3200, otlp-grpc = 4317, otlp-http = 4318, metrics = 8888, prometheus = 9090 }
+note  = "One stack for every project. breach-resolve, standards-telemetry and llm-council carry duplicates that should point here instead."
+
+# ---- projects ---------------------------------------------------------------
+# `declared` lists legacy hardcoded ports so conflicts are visible before migration.
+# `extras` names role slots 10-99 for repos with more than ten services.
+
+[projects.berth]
+P = 0
+path = "~/port-visualiser"
+note = "The registry itself. Dashboard on 10000."
+
+[projects.skills-telemetry]
+P = 1
+path = "~/projects/amiable/skills-telemetry"
+declared = [5432]
+
+[projects.36-inch-platform]
+P = 2
+path = "~/projects/36-inch-penguin/36-inch-platform"
+declared = [3001, 5433, 1025, 8025]
+
+[projects.breach-resolve]
+P = 3
+path = "~/projects/amiable/breach-resolve"
+declared = [3000, 8000, 8001, 8002, 8003, 8004, 8005, 8080, 5432, 6379, 9200, 16686]
+extras = { gateway = 10, auth = 11, incidents = 12, playbooks = 13, integrations = 14, notifications = 15, analytics = 16, scheduler = 17, audit = 18, search = 19 }
+
+[projects.cith-watch]
+P = 4
+path = "~/projects/amiable/cith-watch"
+declared = [5173, 8787, 5439, 6380]
+
+[projects.sightline]
+P = 5
+path = "~/projects/monstrous/sightline"
+declared = [5173, 8787]
+
+[projects.llm-council]
+P = 6
+path = "~/projects/amiable/llm-council"
+declared = [8000]
+
+[projects.chancery]
+P = 7
+path = "~/projects/amiable/chancery"
+
+[projects.learnlock-studio]
+P = 8
+path = "~/projects/amiable/learnlock-studio"
+declared = [5432]
+
+[projects.learnlock]
+P = 9
+path = "~/projects/amiable/learnlock"
+
+[projects.conductor]
+P = 10
+path = "~/projects/amiable/conductor"
+declared = [5173]
+
+[projects.monstrous-conductor]
+P = 11
+path = "~/projects/monstrous/conductor"
+declared = [5173]
+
+[projects.standards-telemetry]
+P = 12
+path = "~/projects/amiable/standards-telemetry"
+declared = [5432]
+
+[projects.swe-ai-ml-kb]
+P = 13
+path = "~/projects/amiable/swe-ai-ml-kb"
+
+[projects.docusaurus-plugin-stentorosaur]
+P = 14
+path = "~/projects/amiable/docusaurus-plugin-stentorosaur"
+declared = [3000]
+
+[projects.amiable-docusaurus]
+P = 15
+path = "~/projects/amiable/amiable-docusaurus"
+declared = [3000]
+
+[projects.monstrous-media]
+P = 16
+path = "~/projects/monstrous/monstrous-media"
+declared = [3000]
+
+[projects.conductor-website]
+P = 17
+path = "~/projects/monstrous/conductor-website"
+declared = [3000]
+
+[projects.heptara]
+P = 18
+path = "~/projects/heptara/heptara"
+
+[projects.sre-agent]
+P = 19
+path = "~/projects/amiable/sre-agent"
+
+[projects.kpm]
+P = 20
+path = "~/projects/amiable/kpm"
+declared = [8091]
