@@ -66,7 +66,7 @@ export function extractPorts(file: string, text: string): ScanHit[] {
     }
   };
   const base = path.basename(file);
-  if (/compose|\.ya?ml$/.test(base)) {
+  if (base.includes('compose') || /\.ya?ml$/.test(base)) {
     for (const m of text.matchAll(/["']?(?:[\d.]+:)?(\d{2,5}):(\d{2,5})(?:\/(?:tcp|udp))?["']?/g))
       add(Number(m[1]), 'compose ports');
     for (const m of text.matchAll(/published:\s*["']?(\d{2,5})/g))

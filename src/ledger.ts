@@ -172,10 +172,17 @@ export async function withLock<T>(opts: LockOptions, fn: () => T | Promise<T>): 
       break;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+      // The lock may vanish between the failed open and this read; that is just a retry.
       let meta: LockMeta | undefined;
       let ageMs = 0;
+      let raw: string | undefined;
       try {
-        meta = JSON.parse(readFileSync(file, 'utf8')) as LockMeta;
+        raw = readFileSync(file, 'utf8');
+      } catch {
+        continue;
+      }
+      try {
+        meta = JSON.parse(raw) as LockMeta;
         ageMs = Date.now() - Date.parse(meta.ts);
       } catch {
         meta = undefined;
@@ -457,7 +464,6 @@ export function assignWorktreeSlot(
   ensureDir(dir);
   for (let W = 1; W <= policy.scheme.worktreeMax; W++) {
     const file = path.join(dir, `W${W}.json`);
-    if (existsSync(file)) continue;
     const slot: WorktreeSlot = { W, name, path: wtPath, created: nowIso(), removed: null };
     try {
       const fd = openSync(file, 'wx', 0o600);

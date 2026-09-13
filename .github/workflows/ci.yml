@@ -61,7 +61,7 @@ jobs:
       - name: Validate the Claude Code plugin
         if: matrix.os == 'ubuntu-latest' && matrix.node == 22
         run: |
-          npm install -g @anthropic-ai/claude-code >/dev/null 2>&1 || { echo "claude CLI unavailable; skipping"; exit 0; }
+          npm install -g @anthropic-ai/claude-code@2.1.270 >/dev/null 2>&1 || { echo "claude CLI unavailable; skipping"; exit 0; }
           claude plugin validate . --strict
 
       # ADR-005: the published package must have no runtime dependencies.
