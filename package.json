@@ -46,10 +46,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",
-    "@types/node": "^20.19.0",
+    "@types/node": "^26.4.1",
     "esbuild": "^0.28.2",
     "smol-toml": "^1.8.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   }
 }
