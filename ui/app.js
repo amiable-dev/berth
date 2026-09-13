@@ -950,14 +950,22 @@ function renderMain() {
     );
     return;
   }
-  const view = {
-    sessions: renderSessions,
-    table: renderTable,
-    map: renderMap,
-    rules: renderRules,
-    term: renderTerm,
-  }[ui.view];
-  main.appendChild(view());
+  /** @returns {HTMLElement} */
+  const renderView = () => {
+    switch (ui.view) {
+      case 'table':
+        return renderTable();
+      case 'map':
+        return renderMap();
+      case 'rules':
+        return renderRules();
+      case 'term':
+        return renderTerm();
+      default:
+        return renderSessions();
+    }
+  };
+  main.appendChild(renderView());
   for (const [cls, top, left] of scrolls) {
     const node = [...main.querySelectorAll('.scroll, .rail, .detail, .map, .rules, .term')].find(
       (n) => n.className === cls,

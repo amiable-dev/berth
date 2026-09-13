@@ -39,8 +39,12 @@ function inlineUi() {
 // Keep the plugin manifest's version in step with package.json (tests enforce equality).
 function syncPluginVersion() {
   const file = join(root, '.claude-plugin', 'plugin.json');
-  if (!existsSync(file)) return;
-  const manifest = JSON.parse(readFileSync(file, 'utf8'));
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return; // no plugin manifest in this checkout
+  }
   if (manifest.version !== pkg.version) {
     manifest.version = pkg.version;
     writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);

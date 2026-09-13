@@ -106,7 +106,9 @@ export async function startUi(opts: {
           'Content-Type': 'application/json; charset=utf-8',
         });
       } catch (e) {
-        return send(500, JSON.stringify({ error: (e as Error).message }), {
+        process.stderr.write(`berth ui: report failed: ${(e as Error).message}
+`);
+        return send(500, '{"error":"report failed; see the berth ui terminal"}', {
           'Content-Type': 'application/json',
         });
       }
