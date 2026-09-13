@@ -12,7 +12,7 @@ Three capabilities, because the problem has three halves:
 
 ## Evidence from this Mac
 
-- 34 Claude Code project contexts under `~/.claude/projects`, including parallel `.claude/worktrees` checkouts of chancery, llm-council and swe-ai-ml-kb. VS Code Insiders / Codex helper processes also run.
+- 34 Claude Code project contexts under `~/.claude/projects`, including parallel `.claude/worktrees` checkouts of chancery, llm-council and swe-ai-ml-kb. VS Code Insiders helper processes also run; their truncated `lsof` name `Codex20-` is `Code -` with an encoded space, not OpenAI Codex, which is not installed.
 - Docker runs through Colima 0.10. Every published container port shows up in `lsof` under one `ssh` process (pid 503) whose cwd is whichever repo ran `colima start`. Compose-launched containers carry `com.docker.compose.project.working_dir` labels; `docker run` containers (penguin-mailpit, penguin-platform-db) carry nothing.
 - Only the standalone `docker-compose` 5.1.4 is installed. The `docker compose` plugin is absent. `!override` and `${VAR:-default}` both verified with the standalone binary.
 - Node 20.20 (no `node:sqlite`), Python via uv, Rust, mise. No Caddy, no direnv, no process-compose.

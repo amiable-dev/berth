@@ -4,6 +4,7 @@ Research and design for coordinating local dev ports across many concurrent AI-a
 
 - [docs/RESEARCH.md](docs/RESEARCH.md): the verified OSS landscape (allocators, proxies, orchestrators, visualizers, Claude Code platform facts) and the measured state of this machine.
 - [docs/DESIGN.md](docs/DESIGN.md): the council-reviewed design. Advisory registry, decodable port scheme, lock-free claims, reconciler with Docker/Colima and session attribution, CLI, Claude Code hooks, dashboard, rollout.
-- [examples/policy.example.toml](examples/policy.example.toml): a starter policy drafted from the repos under `~/projects`.
+- [examples/policy.example.toml](examples/policy.example.toml): the policy for this machine (installed at `~/.config/berth/policy.toml`).
+- [examples/CLAUDE.ports.md](examples/CLAUDE.ports.md): the phase-0 Ports rules installed in `~/.claude/CLAUDE.md`.
 
-Status: design accepted and all five open decisions closed, 2026-09-13. The tool is `berth`; this directory is its repository and will be published as amiable-dev/berth.
+Status: design accepted, decisions closed and phase 0 applied on 2026-09-13 (policy installed, global rules written, lsoff and portless installed). The tool is `berth`; this directory is its repository and will be published as amiable-dev/berth.

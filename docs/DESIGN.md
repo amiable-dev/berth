@@ -8,7 +8,7 @@ Build a thin, zero-dependency core and adopt the edges. The core is a human-edit
 
 ## 2. The problem, as measured on this machine
 
-- Thirty-four Claude Code project contexts, several of them parallel worktrees of one repo, plus Codex sessions, each starting dev servers with framework defaults. Nine repos declare port 3000, five declare 5432, four declare 5173 and 9090, three declare 4317/4318.
+- Thirty-four Claude Code project contexts, several of them parallel worktrees of one repo, plus servers started by hand from VS Code or a terminal, each using framework defaults. Nine repos declare port 3000, five declare 5432, four declare 5173 and 9090, three declare 4317/4318.
 - Frameworks auto-increment silently (Vite 5173 → 5174, Next 3000 → 3001). The agent's belief about its port diverges from reality and it enters a connection-refused loop with no signal that it is wrong.
 - Docker runs through Colima, so every published container port appears in `lsof` under one `ssh` process whose cwd is the repo that happened to run `colima start`. Human and agent attribution is wrong by default.
 - Four repos each ship an observability stack (Grafana 3000, Prometheus 9090, OTel 4317/4318, Tempo 3200). Only one can run; nobody records which.
@@ -21,7 +21,7 @@ Build a thin, zero-dependency core and adopt the edges. The core is a human-edit
 | Enforcement | Advisory only: registry, injected context and written rules. No hook blocks a command. |
 | Allocation models | Per-project blocks with role slots; dynamic TTL leases; optional named hosts over a local proxy. |
 | Visualization | Local web dashboard plus a terminal table. No menubar app. |
-| Consumers | Tool-agnostic CLI first (Codex and humans), Claude Code hooks as the richest integration. |
+| Consumers | Tool-agnostic CLI first (humans, scripts, any agent adopted later), Claude Code hooks as the richest integration. |
 | This session | Design doc, council-reviewed. Build follows. |
 
 ## 4. Options considered
@@ -132,7 +132,7 @@ berth context --session $ID --cwd $PWD      what the SessionStart hook runs
 berth ui [--port 10000]                     dashboard; berth is project 0, so its own port is 10000
 ```
 
-`--json` is the boundary on every command, so a later port to Go is mechanical and other tools (Codex, scripts, the dashboard) consume the same output.
+`--json` is the boundary on every command, so a later port to Go is mechanical and other consumers (scripts, the dashboard, any other agent) read the same output.
 
 `berth env --compose-override` writes `~/.local/state/berth/overrides/<project>.yml` using the `!override` tag (verified with docker-compose 5.1.4) and prints the `COMPOSE_FILE` export, so a repo's hardcoded `ports:` list is replaced without editing the repo. `${VAR:-default}` templating remains the better long-term shape for repos you actively own, and both are supported; the override is the default path.
 
@@ -146,9 +146,9 @@ berth ui [--port 10000]                     dashboard; berth is project 0, so it
 - A global `~/.claude/CLAUDE.md` section carries the rules (below).
 - Optional later: a user-scope MCP wrapper over the same CLI; `.claude/launch.json` generation so the desktop preview pane uses the allocated port.
 
-**Codex and humans:** the same CLI and the same rules in `~/.codex/AGENTS.md`. Passive attribution through `ps -E` works for any process spawned from a Claude session; Codex-spawned processes are attributed by cwd and compose labels only.
+**Humans and other agents:** the same CLI, and the same rules text in whatever rules file another agent reads (Codex would read `~/.codex/AGENTS.md`; it is not installed here). Passive attribution through `ps -E` works for any process spawned from a Claude session; servers started from VS Code or a terminal are attributed by cwd and compose labels only.
 
-**The rules** (draft for `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`):
+**The rules** (target text for `~/.claude/CLAUDE.md` once berth exists; the phase-0 version in `examples/CLAUDE.ports.md` references the policy file and lsof instead):
 
 ```
 ## Ports
@@ -176,7 +176,7 @@ Decided for v1: portless in alias mode. `berth` allocates, `portless alias chanc
 1. **Grouped table** (default): Project → Worktree → Role, with state chip, live holder, session or container, cwd, age, URL. This is the operational view.
 2. **Range map**: one row per project block, cells per role, coloured by state, hatched for squatter, stale and conflict; the legacy area (1024–9999) drawn as a strip with declared ports. This is the conflict view, and the one thing no OSS tool provides.
 3. **Rules**: the policy rendered, so the agreed ranges are visible to a human without opening TOML.
-4. **Sessions**: which Claude or Codex session holds which leases, from claim files and `ps -E` markers.
+4. **Sessions**: which Claude session, or which human, holds which leases, from claim files and `ps -E` markers.
 
 Static render with a refresh button first; polling is a ten-line addition; server-sent events are not needed.
 
@@ -188,7 +188,7 @@ TypeScript on Node 20, bundled with esbuild to a single `berth.js` with zero run
 
 | Phase | What | Effort |
 |---|---|---|
-| 0, no code | Write `policy.toml` from `examples/policy.example.toml` (drafted from this machine's repos). Add the Ports rules to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. Install lsoff for a human view today. skills-telemetry owns the shared observability stack (decided). | an hour |
+| 0, no code | Write `policy.toml` from `examples/policy.example.toml` (drafted from this machine's repos). Add the phase-0 Ports rules (`examples/CLAUDE.ports.md`) to `~/.claude/CLAUDE.md`. Install lsoff for a human view today and portless for later alias use. skills-telemetry owns the shared observability stack (decided). | an hour |
 | 1, core | `policy`, `scan`, `ls`, `who`, `check` (reconciler with Docker labels and `ps -E`), `env` with shell, dotenv and compose override, `context` and the SessionStart / SessionEnd hooks. | 2–3 days |
 | 2, ownership | `claim`, `release`, `adopt`, `free` with refusal semantics, claim files and `compact`, tombstones, the dashboard with grouped table and range map. | 2–3 days |
 | 3, edges | portless alias sync, `launch.json` generation, MCP wrapper, importer for outport/portmarshal registries, optional Go port. | as needed |
