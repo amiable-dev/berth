@@ -1,4 +1,4 @@
-# Release: publish @amiable-dev/berth to npm and create the GitHub Release.
+# Release: stage @amiable-dev/berth on npm for maintainer approval and create the GitHub Release.
 #
 # Triggered by pushing a tag that starts with "v". Publishing uses npm trusted
 # publishing (OIDC): the publish job requests an id-token and npm exchanges it
@@ -62,7 +62,7 @@ jobs:
           node dist/berth.js --help
 
   publish:
-    name: Publish to npm
+    name: Stage on npm
     needs: check
     runs-on: ubuntu-latest
     environment:
@@ -134,14 +134,35 @@ jobs:
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish with provenance
+      # Staged publishing: the trusted publisher on npmjs.com allows `npm stage publish`
+      # only, so CI never publishes directly. A maintainer approves the staged release
+      # with 2FA (`npm stage approve <stage-id>` or on npmjs.com), and only then does the
+      # version go live at the dist-tag chosen here. Staging the same version twice fails,
+      # so a re-run before approval reports the error and nothing else changes.
+      - name: Stage the release for maintainer approval
         if: steps.registry.outputs.published != 'true'
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          NAME="$(node -p "require('./package.json').name")"
           case "$VERSION" in
-            *-*) npm publish --provenance --access public --tag next --loglevel verbose ;;
-            *)   npm publish --provenance --access public --loglevel verbose ;;
+            *-*) TAG=next ;;
+            *)   TAG=latest ;;
           esac
+          npm stage publish --provenance --access public --tag "$TAG" --loglevel verbose 2>&1 | tee stage.log
+          {
+            echo "## npm release staged"
+            echo
+            echo "\`${NAME}@${VERSION}\` is staged on npmjs.com with dist-tag \`${TAG}\` and a provenance attestation."
+            echo "It is **not live** until a maintainer approves it with 2FA:"
+            echo
+            echo '```bash'
+            echo "npm stage list ${NAME}          # find the stage id"
+            echo "npm stage approve <stage-id>    # prompts for the one-time password"
+            echo '```'
+            echo
+            echo "or approve it from the package page on npmjs.com."
+            grep -i -E "stage(d)? ?id|/-/npm/v1/stage" stage.log | sed 's/^/    /' || true
+          } >> "$GITHUB_STEP_SUMMARY"
 
   release:
     name: GitHub Release

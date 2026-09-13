@@ -242,7 +242,13 @@ npm only lets you configure a trusted publisher on a package that already exists
 
 1. **First publish by hand** (once). From a checkout of the release commit: `npm login`, then `npm publish --access public`. `prepack` builds `dist/berth.js`; the tarball is only the bundle, README, LICENSE and CHANGELOG. If your npm account has 2FA on writes, the CLI asks for the one-time code. Create the matching GitHub release afterwards (`gh release create v0.1.0 --notes-from-tag` or from the CHANGELOG section); do not push a `v0.1.0` tag, because the release workflow would try to publish the same version again.
 2. **Configure the trusted publisher.** On npmjs.com, open the `@amiable-dev/berth` package → **Settings** → **Trusted Publisher** → **GitHub Actions**. Enter organization/user `amiable-dev`, repository `berth`, workflow filename `release.yml`, environment `npm`, and save.
-3. **Every later release** is a version bump in `package.json` and `CHANGELOG.md`, a commit, and a tag: `git tag v0.1.1 && git push origin v0.1.1`. The workflow runs the full check, publishes with npm 11 over OIDC (no token anywhere), and creates the GitHub release; each publish carries a Sigstore provenance attestation that `npm audit signatures` can verify. The `npm` GitHub environment already exists; add required reviewers to it if you want a manual approval gate before publishing.
+3. **Every later release** is a version bump in `package.json`, `package-lock.json` and `CITATION.cff`, a new `CHANGELOG.md` section, a commit, and a tag: `git tag -a v0.1.2 -m "berth 0.1.2" && git push origin v0.1.2`. The workflow runs the full check, builds, and **stages** the version on npm over OIDC with a Sigstore provenance attestation (no token anywhere), then creates the GitHub release from the CHANGELOG section.
+4. **Approve the staged release.** The trusted publisher allows `npm stage publish` only, so nothing goes live until a maintainer approves it with 2FA:
+   ```bash
+   npm stage list @amiable-dev/berth      # shows the stage id
+   npm stage approve <stage-id>           # prompts for the one-time password
+   ```
+   or approve from the package page on npmjs.com. The version is published at the dist-tag chosen at staging time (`latest`, or `next` for prerelease tags). Re-running a release workflow before approval fails on "already staged"; reject the stale stage first if you need to restage.
 
 If the package does not yet exist on the registry, publish the very first version manually from a logged-in machine (`npm publish --access public`), then configure the trusted publisher as above. After that, never publish by hand.
 

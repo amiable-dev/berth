@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `berth release` reaches leases that still live in another session's un-compacted claim file.
 - `berth ui` releases its own lease through the ledger when it stops.
 - A session's lease list contains only ports present in the report; ephemeral listeners that merely carry the session marker are attribution evidence.
-- The release workflow skips `npm publish` when the version is already on the registry, so re-running a tag and the hand-published first release are both safe.
+- Releases are staged on npm for maintainer approval with 2FA (`npm stage publish` over OIDC with provenance); the workflow skips staging when the version is already on the registry, so re-running a tag and the hand-published first release are both safe.
 - Dependabot ignores `@types/node` and `vitest` majors; both move with `engines.node`.
 
 ### Fixed
