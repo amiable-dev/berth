@@ -714,6 +714,20 @@ tr.idle {
   width: 10px;
   height: 10px;
 }
+.legend .li .sw.lg {
+  width: 34px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--dim);
+  background: var(--empty);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--dim);
+}
 .grid {
   display: grid;
   grid-template-columns: auto auto 1fr;
@@ -775,6 +789,9 @@ tr.idle {
   font-size: 9px;
   margin-left: 4px;
 }
+.wg .wl.lg {
+  width: auto;
+}
 .cell {
   width: 22px;
   height: 14px;
@@ -786,6 +803,23 @@ tr.idle {
 }
 .cell.x {
   width: 12px;
+}
+/* legacy cell: wide enough for its port number; number in --bg on solid fills, --fg on hatches */
+.cell.lg {
+  width: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--bg);
+}
+.cell.lg.s-stale,
+.cell.lg.s-orphan,
+.cell.lg.s-squatter,
+.cell.lg.s-conflict {
+  color: var(--fg);
 }
 .cell.has {
   cursor: pointer;

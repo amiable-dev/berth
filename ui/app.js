@@ -435,6 +435,18 @@ function projectOf(r) {
   return r.project || r.lease?.project || '';
 }
 
+/**
+ * Every project a record is attributed to: a shared or declared port's `project` may be a
+ * comma-joined list of the declaring projects.
+ * @param {PortRecord} r
+ */
+function projectsOf(r) {
+  return projectOf(r)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 /** @param {PortRecord} r */
 function worktreeOf(r) {
   return r.worktree ?? r.lease?.worktree ?? r.decoded?.W ?? 0;
@@ -1202,38 +1214,46 @@ function renderTable() {
 }
 
 /**
- * One range-map cell (or legacy tick) with hover tooltip and click-to-drawer.
+ * One range-map cell (block, extra or legacy) or legacy-strip tick with hover tooltip and
+ * click-to-drawer. A legacy cell is 34px wide and shows its port number: it sits outside the
+ * block scheme, so there is no P/W/R position to read the port from.
  * @param {PortRecord|undefined} r
  * @param {number} port
  * @param {Project|undefined} project
- * @param {{extra?: boolean, tick?: boolean, role?: string}} [opts]
+ * @param {{extra?: boolean, tick?: boolean, legacy?: boolean, role?: string}} [opts]
  */
 function cell(r, port, project, opts = {}) {
   const state = r ? r.state : null;
   const W = r ? worktreeOf(r) : (decodeClient(port)?.W ?? 0);
-  const role = opts.role || (r ? roleOf(r) : roleForPort(port, project));
+  let role = opts.role || (r ? roleOf(r) : roleForPort(port, project));
+  if (r && !r.decoded && role === '—') role = kindOf(r);
+  const where = r && !r.decoded ? 'legacy' : `W${W}`;
   const cls = opts.tick
     ? `tick${state ? ` s-${state}` : ''}`
-    : `cell${opts.extra ? ' x' : ''}${state ? ` has s-${state}` : ''}`;
+    : `cell${opts.extra ? ' x' : ''}${opts.legacy ? ' lg' : ''}${state ? ` has s-${state}` : ''}`;
   const off = r && !matches(r);
   const owner = r ? ownerLabel(r) : '';
-  const node = el(r ? 'button' : 'div', {
-    class: `${cls}${off ? ' off' : ''}`,
-    type: r ? 'button' : null,
-    'data-port': r ? port : null,
-    'aria-label': r ? `port ${port} ${state}` : null,
-    onclick: r ? () => openDrawer(port) : null,
-    onmouseenter: (/** @type {MouseEvent} */ e) =>
-      showTip(e, {
-        port,
-        state: state || 'free',
-        line1: `${project ? project.name : 'unassigned'} · W${W} · ${role || '—'}`,
-        line2: r ? `${holderOf(r)}${owner ? ` · ${owner}` : ''}` : 'no lease, nothing bound',
-      }),
-    onmousemove: moveTip,
-    onmouseleave: hideTip,
-    onfocus: null,
-  });
+  const node = el(
+    r ? 'button' : 'div',
+    {
+      class: `${cls}${off ? ' off' : ''}`,
+      type: r ? 'button' : null,
+      'data-port': r ? port : null,
+      'aria-label': r ? `port ${port} ${state}` : null,
+      onclick: r ? () => openDrawer(port) : null,
+      onmouseenter: (/** @type {MouseEvent} */ e) =>
+        showTip(e, {
+          port,
+          state: state || 'free',
+          line1: `${project ? project.name : 'unassigned'} · ${where} · ${role || '—'}`,
+          line2: r ? `${holderOf(r)}${owner ? ` · ${owner}` : ''}` : 'no lease, nothing bound',
+        }),
+      onmousemove: moveTip,
+      onmouseleave: hideTip,
+      onfocus: null,
+    },
+    opts.legacy ? String(port) : null,
+  );
   return node;
 }
 
@@ -1272,6 +1292,7 @@ function renderMap() {
         ),
       ),
       el('span', { class: 'li' }, el('span', { class: 'sw bg-free' }), 'free'),
+      el('span', { class: 'li' }, el('span', { class: 'sw lg' }, '5432'), 'legacy'),
     ),
   );
 
@@ -1279,12 +1300,23 @@ function renderMap() {
   for (let P = 0; P <= pmax; P++) {
     const project = idx.projectByP.get(P);
     const base = baseOfP(P, project);
-    const recs = project ? report.ports.filter((r) => projectOf(r) === project.name) : [];
-    const Ws = [0, ...new Set(recs.map(worktreeOf).filter((w) => w > 0))].sort((a, b) => a - b);
-    const live = recs.some((r) => {
-      const k = kindOf(r);
-      return k !== 'declared' && k !== 'shared';
-    });
+    // Every record attributed to this project: block cells by P/W/R plus a legacy group for the
+    // undecoded ports (declared, shared — which belong to their owner — and anything else the
+    // server attributed here). A comma-joined `project` counts for each name in it.
+    const recs = project ? report.ports.filter((r) => projectsOf(r).includes(project.name)) : [];
+    const legacy = recs.filter((r) => !r.decoded).sort((a, b) => a.port - b.port);
+    const Ws = [
+      0,
+      ...new Set(
+        recs
+          .filter((r) => r.decoded)
+          .map(worktreeOf)
+          .filter((w) => w > 0),
+      ),
+    ].sort((a, b) => a - b);
+    // Lit when anything is actually bound on the row, block or legacy; a project holding only
+    // leases, declarations or shared entries with no live holder is dimmed.
+    const live = recs.some((r) => r.live);
     const opacity = !project ? 'o35' : live ? '' : 'o60';
     grid.appendChild(el('div', { class: `p ${opacity}` }, String(P).padStart(2, '0')));
     grid.appendChild(
@@ -1310,6 +1342,11 @@ function renderMap() {
           group.appendChild(cell(idx.byPort.get(port), port, project, { extra: true, role: name }));
         }
       }
+      cells.appendChild(group);
+    }
+    if (legacy.length) {
+      const group = el('div', { class: 'wg' }, el('span', { class: 'wl lg' }, 'legacy'));
+      for (const r of legacy) group.appendChild(cell(r, r.port, project, { legacy: true }));
       cells.appendChild(group);
     }
     grid.appendChild(cells);

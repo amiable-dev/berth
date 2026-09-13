@@ -434,14 +434,19 @@ function buildSessions(
     if (own.length > 0)
       how.push(`${own.length} lease${own.length === 1 ? '' : 's'} claimed by this session`);
     const filePidAlive = file?.pid !== undefined && pidAlive(file.pid);
-    const alive = !file?.ended && (filePidAlive || markers.length > 0);
+    // A human pseudo-session has no hook record: it is alive while any of its lease owners' pids are.
+    const leasePidAlive = own.some((l) => pidAlive(l.owner.pid));
+    const alive = !file?.ended && (filePidAlive || markers.length > 0 || (!file && leasePidAlive));
     const tool: OwnerTool =
       file?.tool ?? own[0]?.owner.tool ?? (id.startsWith('human') ? 'human' : 'claude-code');
     const cwd = file?.cwd ?? own[0]?.cwd ?? markers[0]?.cwd;
     const proj = file?.project ?? own[0]?.project ?? projectForPath(policy, cwd)?.name;
-    const ports = [...new Set([...own.map((l) => l.port), ...markers.map((m) => m.port)])].sort(
-      (a, b) => a - b,
-    );
+    // Only ports that made it into the report: ephemeral or ignored listeners carrying the
+    // session marker are attribution evidence, not leases.
+    const reported = new Set(records.map((r) => r.port));
+    const ports = [...new Set([...own.map((l) => l.port), ...markers.map((m) => m.port)])]
+      .filter((port) => reported.has(port))
+      .sort((a, b) => a - b);
     const states = ports.map((p) => stateByPort.get(p)).filter((s): s is State => s !== undefined);
     out.push({
       id,

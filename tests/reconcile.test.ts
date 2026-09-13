@@ -229,6 +229,20 @@ describe('states', () => {
       leases: [13001],
     });
     expect(b).toMatchObject({ alive: true, tool: 'claude-code', leases: [13001] });
+    // an ephemeral listener carrying the marker is evidence, not a lease
+    const t2 = truth({
+      listeners: [
+        {
+          port: 65188,
+          addr: '127.0.0.1:65188',
+          pid: 9,
+          cmd: 'limactl',
+          sessionId: 'sess-alpha-1',
+          source: 'lsof',
+        },
+      ],
+    });
+    expect(run([], t2, sessions).sessions.find((s) => s.id === 'sess-alpha-1')?.leases).toEqual([]);
     expect(r.summary.attention).toBeGreaterThan(0);
     expect(r.summary.byState.conflict).toBe(1);
   });

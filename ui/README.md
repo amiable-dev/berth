@@ -17,7 +17,9 @@ wordmark (the 404 logged every 5 s is expected) and keeps polling so it goes liv
 `app.js` fetches `GET /api/state` (the shape of `berth check --json`, typed in its JSDoc) every 5 s while
 polling is on and on REFRESH; a failed fetch keeps the last good report and shows `offline`. Joins are
 client-side: `sessions[].leases` links ports to sessions (fallback `lease.owner.session_id`);
-`policy.projects` drives table groups, map rows, the rules view and the declared-only legacy ticks;
+`policy.projects` drives table groups, map rows, the rules view and the declared-only legacy ticks; each
+map row also carries a `legacy` group of every undecoded port attributed to the project (a comma-joined
+`project` counts for each name), drawn 34px wide with its number, and a row is lit only when something is bound;
 `advisory`, `evidence` and `decoded` render as-is. DOM is built with `createElement`/`textContent`; URLs
 link only if `http(s)://`. Theme persists in `localStorage["berth.theme"]` (try/catch), default dark.
 

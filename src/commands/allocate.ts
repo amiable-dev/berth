@@ -21,7 +21,7 @@ import { ownerDesc } from '../reconcile.js';
 import { buildReport } from '../report.js';
 import { currentSession } from '../session.js';
 import type { Lease, LeaseKind, PortRecord } from '../types.js';
-import { atomicWriteSync, nowIso, parsePort, pidAlive, sleep } from '../util.js';
+import { atomicWriteSync, hostUser, nowIso, parsePort, pidAlive, sleep } from '../util.js';
 import type { IO } from './query.js';
 
 export function envName(role: string): string {
@@ -505,7 +505,8 @@ export async function cmdAdopt(args: ParsedArgs, io: IO): Promise<number> {
     via: 'path',
   };
   const me = currentSession(flagString(args.flags, 'session'));
-  const sessionId = owner === 'session' ? me.id : `human-${me.id.replace(/^human-/, '')}`;
+  // A human owner is the user at the keyboard, never a Claude session id.
+  const sessionId = owner === 'session' ? me.id : `human-${hostUser()}`;
   const lease = makeLease(policy, ctx, port, role, kind, flagString(args.flags, 'note'), sessionId);
   if (owner === 'human') {
     lease.owner = {
