@@ -98,7 +98,23 @@ jobs:
       # checked-out tag. Prerelease tags (v1.2.0-rc.1) go to the `next`
       # dist-tag so a plain `npm install @amiable-dev/berth` never resolves
       # to one.
+      # Re-running a tag (or tagging a version that was published by hand, as the
+      # very first release must be) skips the publish instead of failing on
+      # "cannot publish over previously published version".
+      - name: Check whether this version is already on the registry
+        id: registry
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NAME="$(node -p "require('./package.json').name")"
+          if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "${NAME}@${VERSION} is already published; skipping publish"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish with provenance
+        if: steps.registry.outputs.published != 'true'
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           case "$VERSION" in
