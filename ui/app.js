@@ -1891,14 +1891,20 @@ function loadTheme() {
   }
 }
 
-/** @param {'dark'|'light'} theme */
-function applyTheme(theme) {
+/**
+ * @param {'dark'|'light'} theme
+ * @param {boolean} [persist] false when the theme came from a `?theme=` link, so a shared link
+ *   does not overwrite the viewer's saved preference
+ */
+function applyTheme(theme, persist = true) {
   ui.theme = theme;
   document.body.dataset.theme = theme;
-  try {
-    localStorage.setItem(THEME_KEY, theme);
-  } catch {
-    /* private mode or storage disabled: theme is session-only */
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      /* private mode or storage disabled: theme is session-only */
+    }
   }
   renderHeaderStatus();
 }
@@ -1919,7 +1925,13 @@ function render() {
 }
 
 function boot() {
-  applyTheme(loadTheme());
+  // Deep links: ?view=map|table|sessions|rules|term and ?theme=light|dark (theme not persisted).
+  const params = new URLSearchParams(location.search);
+  const qTheme = params.get('theme');
+  if (qTheme === 'light' || qTheme === 'dark') applyTheme(qTheme, false);
+  else applyTheme(loadTheme());
+  const qView = params.get('view');
+  if (qView && VIEWS.includes(/** @type {View} */ (qView))) ui.view = /** @type {View} */ (qView);
   byId('bound').textContent = `ui :${location.port || '10000'}`;
   const search = /** @type {HTMLInputElement} */ (byId('search'));
   search.addEventListener('input', () => {

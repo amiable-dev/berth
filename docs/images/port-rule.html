@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>berth · the port number is the rule</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Source+Serif+4:opsz,wght@8..60,400&family=JetBrains+Mono:wght@600&display=swap">
+<style>
+  :root { --bg:#EEF2F5; --surface:#FAFBFC; --ink:#15202B; --ink-2:#55636F; --line:#C6D0D9; --dp:#0B6E75; --dw:#7E46B5; --dr:#BF5710; }
+  body[data-theme="dark"] { --bg:#0F161C; --surface:#172029; --ink:#E4EAEF; --ink-2:#9AA8B4; --line:#2C3843; --dp:#4CC1C8; --dw:#B78DE0; --dr:#F08A4B; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: "Source Serif 4", Georgia, serif; font-size: 17px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  .plate { width: 1180px; border: 2px solid var(--ink); background: var(--surface); padding: 30px 40px 32px; }
+  .digits { display: flex; gap: 8px; font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-weight: 600; font-size: 128px; line-height: 1; }
+  .digits span { padding: 6px 12px; border-radius: 6px; }
+  .dP { color: var(--dp); background: color-mix(in srgb, var(--dp) 14%, transparent); }
+  .dW { color: var(--dw); background: color-mix(in srgb, var(--dw) 14%, transparent); }
+  .dR { color: var(--dr); background: color-mix(in srgb, var(--dr) 14%, transparent); }
+  .decode { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 28px; font-size: 22px; line-height: 1.35; }
+  .decode b { display: block; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; font-size: 20px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
+  .cP b { color: var(--dp); } .cW b { color: var(--dw); } .cR b { color: var(--dr); }
+  .formula { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 26px; margin-top: 30px; padding-top: 22px; border-top: 1px dashed var(--line); }
+</style>
+</head>
+<body>
+<div class="plate">
+  <div class="digits"><span>1</span><span class="dP">3</span><span class="dW">2</span><span class="dR">0</span><span class="dR">4</span></div>
+  <div class="decode">
+    <div><b>base</b>10000, so every block sits between 10000 and 39999</div>
+    <div class="cP"><b>P · project</b>3 = breach-resolve, permanent</div>
+    <div class="cW"><b>W · worktree</b>2 = second additional worktree (0 is main)</div>
+    <div class="cR"><b>R · role</b>04 = smtp</div>
+  </div>
+  <div class="formula">port = 10000 + 1000·P + 100·W + R &nbsp; · &nbsp; P 0–29 &nbsp; W 0–9 &nbsp; R 00–99</div>
+</div>
+<script>
+  if (new URLSearchParams(location.search).get('theme') === 'dark') document.body.dataset.theme = 'dark';
+</script>
+</body>
+</html>

@@ -1,23 +1,98 @@
 # berth
 
-**Advisory port registry for machines that run many agent sessions at once.**
+**Give every project on your machine its own block of ports, then let your agents and your terminal agree on who holds what.**
 
-When thirty Claude Code sessions, a few worktrees and a Docker stack all start dev servers on one Mac, ports collide and every session loses track of which port it was given. berth gives each project a permanent, decodable block of ports, records who holds what, checks the ledger against what is actually listening (including containers behind Colima and processes spawned by a Claude session), and shows the result in a terminal table and a local dashboard. It never blocks a command and never kills a process on its own: it tells you, and your agents, the truth.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/port-rule-dark.png">
+  <img alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp. port = 10000 + 1000·P + 100·W + R" src="docs/images/port-rule-light.png" width="100%">
+</picture>
+
+When several Claude Code sessions, a couple of git worktrees and a Docker stack all start dev servers on one laptop, ports collide and every session loses track of the port it was given. berth fixes the bookkeeping, not the servers:
+
+- **Every project gets a permanent block of ports**, and the number itself says whose it is. 13204 is project 3, worktree 2, smtp. Nobody has to remember an allocation table.
+- **A small ledger records who holds which port**, and a reconciler checks it against what is actually listening, including containers behind Colima or Docker Desktop and servers started by a Claude session.
+- **Agents are told their ports when a session starts**; humans get a terminal table, `berth who <port>`, and a local dashboard.
+- **It is advisory.** berth never blocks a command and never kills anything on its own. It tells you, and your agents, the truth.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/dashboard-map-dark.png">
+  <img alt="berth ui map view: one row per project block, live legacy ports as numbered cells, the ten role cells per worktree, and the legacy strip for 1024–9999" src="docs/images/dashboard-map-light.png" width="100%">
+</picture>
+
+## Install
+
+```bash
+npm install -g @amiable-dev/berth      # Node 20 or newer, zero runtime dependencies
+cp examples/policy.example.toml ~/.config/berth/policy.toml   # then edit: one [projects.<name>] per repo
+berth doctor                            # confirms lsof, docker, hooks and the policy
+```
+
+The policy is the only thing you write by hand: each repo gets a permanent number `P` and a path. `berth scan --write` fills in the ports your repos already hardcode so nothing is lost before you migrate.
+
+## Day to day
+
+**Starting a session.** With the hooks installed (`berth hooks install`), every Claude Code session starts with its project's block in context and `PORT`, `API_PORT`, `DB_PORT` and the other role ports exported. In a plain shell:
+
+```bash
+eval "$(berth env --shell)"        # this checkout's ports as environment variables
+```
+
+**Starting a server.** Use the exported port and strict mode, so a busy port fails loudly instead of silently sliding to the next number:
+
+```bash
+vite --port "$PORT" --strictPort
+uvicorn app:main --port "$API_PORT"
+berth claim --role api             # record that this session owns the api port
+```
+
+Docker Compose files that hardcode host ports need no edits:
+
+```bash
+eval "$(berth env --compose-override)"   # writes an !override file and sets COMPOSE_FILE
+docker compose up
+```
+
+**Who has 5432?**
+
+```bash
+berth who 5432
+```
 
 ```
-$ berth who 13204
-13204  ok  (block)
-  decode   10000 + 1000·3 + 100·2 + 04  →  breach-resolve · W2 · smtp
-  lease    breach-resolve W2 smtp · block · created 2026-09-13T10:12:04.101Z
-  owner    session 4122e12b… pid 48121
-  live     mailpit pid 48210 · ~/projects/amiable/breach-resolve/.claude/worktrees/feat-x
+5432  ok  (declared)
+  live     deploy-postgres-1 · ~/projects/amiable/skills-telemetry/deploy
   how we know
-    › lsof: mailpit pid 48210 cwd ~/projects/amiable/breach-resolve/.claude/worktrees/feat-x
-    › ps -E: CLAUDE_CODE_SESSION_ID=4122e12b…
-    › lease: block breach-resolve W2 smtp by session 4122e12b… since 2026-09-13T10:12:04.101Z
-    › block: breach-resolve P=3 W2 smtp
+    › docker: container deploy-postgres-1, compose deploy, working_dir ~/projects/amiable/skills-telemetry/deploy
+    › lsof: published through ssh pid 503 (Colima)
+    › policy: declared by skills-telemetry, breach-resolve, learnlock-studio, standards-telemetry
   advisory none
 ```
+
+**Is anything wrong?**
+
+```bash
+berth check                        # "30 ports · 0 need attention · 2 live sessions", then the attention list
+berth ls                           # Project → Worktree → Role table
+```
+
+Each port gets one of eight states and, when it needs attention, the one command that fixes it (release a stale lease, adopt a server you started by hand, look at a conflict). `check` always exits 0.
+
+**A scratch server or a new worktree.**
+
+```bash
+berth claim --dynamic 1            # a port from the dynamic pool with an 8 h lease
+berth release --port 40012         # give it back
+```
+
+Worktrees get their own hundred-port slice of the project block the first time `berth env` or `berth claim` runs inside them; `berth worktrees list` shows the slots.
+
+**Watching everything.**
+
+```bash
+berth ui                           # http://127.0.0.1:10000
+```
+
+Sessions, the grouped table, the range map above, the rules from your policy, and a drawer that explains any port. It polls every five seconds and binds to localhost only.
 
 ## The port number is the rule
 
@@ -31,49 +106,14 @@ port = 10000 + 1000·P + 100·W + R
 | **W** | worktree: 0 is the main checkout, 1–9 additional worktrees | 0–9 |
 | **R** | role slot | 00 web · 01 api · 02 db · 03 cache · 04 smtp · 05 mail-ui · 06 docs · 07 worker · 08 otlp-grpc · 09 otlp-http · 10–99 project-named extras |
 
-Reading a port is decoding it: 13204 is project 3, worktree 2, smtp. Nothing common defaults into the block range; the few well-known ports that do (11211, 15672, 16686, 27017 …) sit on a lint list and are never handed to a canonical role. Ad-hoc servers get a TTL lease from a dynamic pool (40000–41999 by default), legacy hardcoded ports are registered as `declared` so conflicts are visible before any migration, and a shared observability stack is declared once with an owner so other projects connecting to it is fine.
+Nothing common defaults into that range; the few well-known ports that do (11211, 15672, 16686, 27017 …) sit on a lint list and are never handed to a canonical role. Ad-hoc servers get a TTL lease from a dynamic pool (40000–41999), legacy hardcoded ports are registered as `declared` so conflicts are visible before any migration, and a shared observability stack is declared once with an owner so other projects connecting to it is fine.
 
-## Install
-
-```bash
-npm install -g @amiable-dev/berth     # Node 20 or newer; zero runtime dependencies
-berth doctor                           # what works on this machine
-```
-
-From source: `npm ci && npm run build && npm link` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
-
-## Quick start
-
-1. **Write the policy.** Copy [`examples/policy.example.toml`](examples/policy.example.toml) to `~/.config/berth/policy.toml` and give each repo a permanent `P`. `berth scan` finds the ports your repos already hardcode; `berth scan --write` records them as `declared`.
-2. **See what is going on.**
-   ```bash
-   berth check          # 34 ports · 2 need attention · 3 live sessions, then the attention list
-   berth ls             # Project → Worktree → Role table
-   berth who 5432       # lease, live holder, evidence, advisory
-   berth ui             # dashboard on http://127.0.0.1:10000
-   ```
-3. **Use the numbers.**
-   ```bash
-   eval "$(berth env --shell)"        # PORT, API_PORT, DB_PORT … for this checkout
-   berth env --dotenv > .env.ports    # or a dotenv file
-   eval "$(berth env --compose-override)"   # COMPOSE_FILE with an !override file: no repo edits
-   berth claim --role api             # record that this session owns 13001
-   berth claim --dynamic 1            # a scratch port with an 8 h TTL
-   berth release --port 13001
-   ```
-4. **Let agents in.**
-   ```bash
-   berth hooks install                # SessionStart / SessionEnd hooks in ~/.claude/settings.json
-   cat examples/CLAUDE.ports.md >> ~/.claude/CLAUDE.md    # the rules every session reads
-   berth launch-json --write          # .claude/launch.json for the desktop preview pane
-   ```
-
-## What the reconciler says about a port
+## What the states mean
 
 | State | Meaning | Advisory |
 |---|---|---|
 | `ok` | leased and bound by the expected owner, or a shared service | none |
-| `idle` | leased, nothing bound, owner alive | shown dimmed |
+| `idle` | leased or declared, nothing bound, owner alive | shown dimmed |
 | `stale` | leased, nothing bound, owner pid gone | `berth release --port N`; never auto-killed |
 | `orphan` | lease cwd no longer exists (worktree removed) | release; the tombstone keeps the slot |
 | `unmanaged` | bound inside a managed range with no lease | `berth adopt N --owner human` |
@@ -81,20 +121,18 @@ From source: `npm ci && npm run build && npm link` (see [CONTRIBUTING.md](CONTRI
 | `conflict` | lease owner differs from the live holder | `berth who N --json`; the owning session's belief is wrong |
 | `drift` | config declares a port outside its allocation, or a shared stack is partially up | `berth scan --write`; never reassigned |
 
-Truth comes from four read-only sources, none of which need sudo: `lsof` for own-user listeners and their working directories, `netstat` for other users' listeners, `docker ps` compose labels to attribute container ports (Colima and Docker Desktop publish them through a proxy process that is never treated as the owner), and `ps -E` to read the `CLAUDE_CODE_SESSION_ID` marker from a listener's environment, which attributes a server to the session that started it even when nobody claimed anything. Liveness beats the clock: a lease whose pid is alive and whose port is bound stays `ok` whatever its TTL says.
+Truth comes from four read-only sources, none of which need sudo: `lsof` for your listeners and their working directories, `netstat` for other users' listeners, `docker ps` compose labels to attribute container ports (the Colima or Docker Desktop proxy process is never treated as the owner), and `ps -E` to read the `CLAUDE_CODE_SESSION_ID` marker from a listener's environment, which attributes a server to the session that started it even when nobody claimed anything. Liveness beats the clock: a lease whose pid is alive and whose port is bound stays `ok` whatever its TTL says.
 
 ## Claude Code integration
 
-- **SessionStart** runs `berth context`: read-only, budgeted at 200 ms, always exit 0. It injects the project's block, current leases, shared services and any live conflict touching this project (not the global table), and appends `PORT`, `<ROLE>_PORT` and `BERTH_*` exports to `CLAUDE_ENV_FILE` so every later Bash call has them.
-- **SessionEnd** runs `berth session-end`: marks the session ended and soft-releases its dynamic leases; they stay visible as `stale` until released.
-- **Rules** in `~/.claude/CLAUDE.md` ([`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md)) make strict-port non-negotiable, which is what makes an advisory registry work: frameworks may not silently increment, and `berth who` gives a session a way to discover that it is wrong.
-- **MCP**: `berth mcp` is a stdio server with `berth_check`, `berth_who`, `berth_ls`, `berth_claim`, `berth_release` and `berth_env`. Register it once for every project:
-  ```bash
-  claude mcp add --scope user berth -- berth mcp
-  ```
-- **Names**: `berth names sync` turns http leases into [portless](https://github.com/vercel-labs/portless) aliases (`chancery.localhost`, `feat-x.chancery.localhost`). berth allocates; portless only proxies.
+- **SessionStart** runs `berth context`: read-only, under 200 ms, always exit 0. It injects the project's block, current leases, shared services and any live conflict touching this project, and appends the role-port exports to `CLAUDE_ENV_FILE`.
+- **SessionEnd** runs `berth session-end`: records that the session ended; its leases go `stale` once nothing is bound.
+- **Rules** for `~/.claude/CLAUDE.md` are in [`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md). Strict-port is the rule that makes an advisory registry work.
+- **MCP**: `claude mcp add --scope user berth -- berth mcp` exposes `berth_check`, `berth_who`, `berth_ls`, `berth_claim`, `berth_release` and `berth_env` to every session.
+- **Desktop preview pane**: `berth launch-json --write` generates `.claude/launch.json` with the allocated ports.
+- **Names**: `berth names sync` turns http leases into [portless](https://github.com/vercel-labs/portless) aliases such as `chancery.localhost`; berth allocates, portless only proxies.
 
-Any other agent or a human uses the same CLI; `--json` is the boundary on every read command.
+Any other agent or script uses the same CLI; `--json` is the boundary on every read command.
 
 ## Commands
 
@@ -104,22 +142,22 @@ who <port> [--json]                             lease, live holder, evidence, ad
 check [--json] [--no-docker]                    reconcile ledger with reality; exit 0 always
 env [--shell|--dotenv|--compose-override|--json] [--worktree N] [--cwd DIR]
 claim --role R | --extra NAME | --dynamic N | --port P [--note T] [--force] [--json]
-release --port P | --all [--session ID] [--force]
-adopt <port> --owner human|session [--project X] [--role R]
-free <port> [--force]                           SIGTERM an own-user listener; refuses others'
+release --port P | --all [--force] [--json]
+adopt <port> --owner human|session [--project X] [--role R] [--json]
+free <port> [--force] [--json]                  SIGTERM an own-user listener; refuses others'
 scan [--write] [--project X] [--json]           ports hardcoded in repo configs vs policy
 compact                                         fold per-session claim files into the ledger
 context | session-end                           Claude Code hook entry points
 hooks install|uninstall|print                   manage ~/.claude/settings.json hooks
 launch-json [--write] [--cwd DIR]               .claude/launch.json for the desktop preview pane
-names list|sync [--all] [--dry-run]             portless aliases for http leases
-worktrees list|remove|prune                     worktree slots and tombstones
+names list|sync [--all] [--dry-run] [--json]    portless aliases for http leases
+worktrees list|remove|prune [--json]            worktree slots and tombstones
 mcp                                             MCP server over stdio
 ui [--port N] [--open]                          dashboard on 127.0.0.1 (default 10000)
 doctor [--json]                                 environment checks
 ```
 
-Environment: `BERTH_POLICY`, `BERTH_CONFIG_DIR`, `BERTH_STATE_DIR`, `NO_COLOR`. Exit codes: 0 ok, 1 refused or failed, 2 usage. `check` always exits 0: the point is information, not gates.
+Environment: `BERTH_POLICY`, `BERTH_CONFIG_DIR`, `BERTH_STATE_DIR`, `NO_COLOR`. Exit codes: 0 ok, 1 refused or failed, 2 usage.
 
 ## How it stays safe
 
@@ -127,7 +165,7 @@ Environment: `BERTH_POLICY`, `BERTH_CONFIG_DIR`, `BERTH_STATE_DIR`, `NO_COLOR`. 
 - No shell. Every external command runs through `execFile` with an argument array and a timeout. Only three Claude marker variables are read from process environments; nothing else is retained.
 - The dashboard binds 127.0.0.1, serves GET only, never touches the file system, and uses a per-response nonce CSP with `frame-ancestors 'none'`. Cross-site requests to `/api/state` are refused.
 - `free` signals only pids you own, never containers or VM proxies, and refuses ports held by another live session unless you force it.
-- State lives in `~/.local/state/berth` as 0600 files in a 0700 directory. The published package has no runtime dependencies and ships with npm provenance.
+- State lives in `~/.local/state/berth` as 0600 files in a 0700 directory. The package has no runtime dependencies and is published with npm provenance.
 
 See [SECURITY.md](SECURITY.md) for the disclosure policy.
 
