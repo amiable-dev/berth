@@ -216,6 +216,22 @@ interface DoctorCheck {
   warn?: boolean;
 }
 
+/** Version of the berth Claude Code plugin when it is installed for this user. */
+function installedPluginVersion(): string | undefined {
+  const file = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+  if (!existsSync(file)) return undefined;
+  try {
+    const data = JSON.parse(readFileSync(file, 'utf8')) as {
+      plugins?: Record<string, { version?: string } | { version?: string }[]>;
+    };
+    const entry = data.plugins?.['berth@berth'];
+    const first = Array.isArray(entry) ? entry[0] : entry;
+    return first ? (first.version ?? 'unknown') : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function doctorChecks(): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
   const nodeMajor = Number(process.versions.node.split('.')[0]);
@@ -314,13 +330,16 @@ export async function doctorChecks(): Promise<DoctorCheck[]> {
       hooks = false;
     }
   }
+  const plugin = installedPluginVersion();
   checks.push({
     name: 'claude hooks',
     ok: true,
-    warn: !hooks,
-    detail: hooks
-      ? `installed in ${contractHome(settings)}`
-      : 'not installed (run: berth hooks install)',
+    warn: !hooks && !plugin,
+    detail: plugin
+      ? `berth plugin ${plugin} installed${hooks ? ' (manual hooks also in settings.json: run berth hooks uninstall so context does not run twice)' : ''}`
+      : hooks
+        ? `installed in ${contractHome(settings)}`
+        : 'not installed (claude plugin marketplace add amiable-dev/berth && claude plugin install berth@berth, or berth hooks install)',
   });
   const claudeMd = path.join(os.homedir(), '.claude', 'CLAUDE.md');
   const rules = existsSync(claudeMd) && /## Ports/.test(readFileSync(claudeMd, 'utf8'));
