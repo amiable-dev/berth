@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-14
+
+**Process release.** Changelog entries are now enforced per pull request, governance documents the single-maintainer period, and the 0.1.1 release date is corrected.
+
 ### Changed
 
 - Every pull request must add a note under `[Unreleased]`: a required CI check fails otherwise (Dependabot PRs and the `skip-changelog` label are exempt). GOVERNANCE.md describes the single-maintainer period and what changes when a second maintainer joins.
@@ -94,7 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/amiable-dev/berth/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/amiable-dev/berth/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/amiable-dev/berth/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/amiable-dev/berth/compare/v0.1.0...v0.1.1
