@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-14
+
+**Agent sessions need nothing but the plugin.** The plugin now carries `bin/berth` and puts it on each session's PATH, so `berth` works from Claude Code without a global install.
+
 ### Added
 
 - The plugin ships `bin/berth`, and the SessionStart hook puts it on the session's PATH, so `berth` works in every Bash call of a Claude Code session without a global npm install (`BERTH_BIN` is exported either way). The README now documents installation from an agent session and from a terminal separately, with a who-does-what table; the skills mention the MCP tools as an alternative to the CLI.
@@ -85,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/amiable-dev/berth/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/amiable-dev/berth/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/amiable-dev/berth/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/amiable-dev/berth/releases/tag/v0.1.0
