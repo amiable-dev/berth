@@ -4,8 +4,24 @@
     {
       "name": "berth ui",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["dist/berth.js", "ui", "--port", "10000"],
+      "runtimeArgs": [
+        "dist/berth.js",
+        "ui",
+        "--port",
+        "10000"
+      ],
       "port": 10000
+    },
+    {
+      "name": "berth docs",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--prefix",
+        "docs"
+      ],
+      "port": 10006
     }
   ]
 }

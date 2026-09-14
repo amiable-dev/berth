@@ -47,6 +47,20 @@ updates:
     commit-message:
       prefix: "chore(ci)"
 
+  # Docs site (VitePress) installed from its own lockfile
+  - package-ecosystem: "npm"
+    directory: "/docs"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "docs"
+    commit-message:
+      prefix: "chore(docs)"
+
   # GitHub Actions (pinned by commit SHA; Dependabot updates the SHA and the
   # trailing version comment together)
   - package-ecosystem: "github-actions"

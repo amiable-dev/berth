@@ -1,0 +1,13 @@
+{
+  "name": "berth-docs",
+  "private": true,
+  "description": "Documentation site for berth (VitePress). Built by .github/workflows/docs.yml and published to GitHub Pages.",
+  "scripts": {
+    "dev": "vitepress dev .",
+    "build": "vitepress build .",
+    "preview": "vitepress preview . --port 10006"
+  },
+  "devDependencies": {
+    "vitepress": "2.0.0-alpha.20"
+  }
+}

@@ -8,3 +8,5 @@ coverage/
 .ds-build-meta.json
 src/ui/page.generated.ts
 build/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

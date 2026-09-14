@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Documentation site at https://amiable-dev.github.io/berth/ (VitePress in `docs/`, built and deployed by `.github/workflows/docs.yml`): getting started, concepts, day-to-day use, Claude Code and agents, the dashboard, troubleshooting, and CLI, policy, JSON/MCP and safety references, plus the design document and ADRs.
+- The dashboard header links to the documentation and the GitHub repository (icons left of the search box).
+
 ## [0.1.4] - 2026-09-14
 
 **Process release.** Changelog entries are now enforced per pull request, governance documents the single-maintainer period, and the 0.1.1 release date is corrected.
