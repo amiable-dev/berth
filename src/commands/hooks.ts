@@ -152,6 +152,25 @@ function fallbackContext(policy: Policy | undefined, why: string): string {
   ].join('\n');
 }
 
+/**
+ * When running from the Claude Code plugin, put its bin/ on the session PATH so `berth` works in
+ * every Bash call without a global npm install. Skipped when a `berth` is already on PATH.
+ */
+export function pluginPathExports(env: NodeJS.ProcessEnv = process.env): string[] {
+  const root = env.BERTH_PLUGIN_ROOT;
+  if (!root) return [];
+  const bin = path.join(root, 'bin');
+  if (!existsSync(path.join(bin, 'berth'))) return [];
+  const onPath = (env.PATH ?? '')
+    .split(path.delimiter)
+    .some((d) => d && existsSync(path.join(d, 'berth')));
+  if (onPath) return [`export BERTH_BIN=${JSON.stringify(path.join(bin, 'berth'))}`];
+  return [
+    `export PATH=${JSON.stringify(bin)}:"$PATH"`,
+    `export BERTH_BIN=${JSON.stringify(path.join(bin, 'berth'))}`,
+  ];
+}
+
 /** SessionStart hook: read-only against allocation state, always exit 0, hard deadline. */
 export async function cmdContext(args: ParsedArgs, io: IO): Promise<number> {
   const started = Date.now();
@@ -217,9 +236,10 @@ export async function cmdContext(args: ParsedArgs, io: IO): Promise<number> {
       return 0;
     }
     const envFile = process.env.CLAUDE_ENV_FILE;
-    if (envFile && built.exports.length) {
+    if (envFile) {
+      const lines = [...built.exports, 'export BERTH_SESSION_CONTEXT=1', ...pluginPathExports()];
       try {
-        appendFileSync(envFile, `${built.exports.join('\n')}\nexport BERTH_SESSION_CONTEXT=1\n`);
+        appendFileSync(envFile, `${lines.join('\n')}\n`);
       } catch {
         // env file is optional
       }

@@ -19,7 +19,20 @@ When several Claude Code sessions, a couple of git worktrees and a Docker stack 
   <img alt="berth ui map view: one row per project block, live legacy ports as numbered cells, the ten role cells per worktree, and the legacy strip for 1024–9999" src="docs/images/dashboard-map-light.png" width="100%">
 </picture>
 
-## Quick start
+## Install
+
+berth is used from two places, and the setup differs.
+
+**From an agent session (Claude Code).** Install the plugin once per machine; you or the agent can run it:
+
+```bash
+claude plugin marketplace add amiable-dev/berth
+claude plugin install berth@berth
+```
+
+From the next session on, every session gets its project's ports injected at start, `berth` on its PATH (the plugin ships the CLI; no global install needed), the MCP tools (`berth_check`, `berth_who`, `berth_ls`, `berth_claim`, `berth_release`, `berth_env`), and two skills. To bring a repository under berth, ask the agent: *"register this repo in berth"*. The `berth-onboard` skill runs `berth init` if there is no policy yet, `berth project add .`, and wires the checkout (`env`, the Compose override, `launch.json`). Nothing here needs a human at the keyboard except the decisions berth deliberately leaves to you (see "What an agent may do" below).
+
+**From a terminal (humans and scripts).** Install the CLI globally:
 
 ```bash
 npm install -g @amiable-dev/berth      # Node 20 or newer, zero runtime dependencies
@@ -28,16 +41,15 @@ cd ~/projects/my-app && berth project add .   # next free project number, ports 
 berth check                             # what is listening, who holds it, what needs attention
 ```
 
-`berth project add` is additive and idempotent: it appends one `[projects.<name>]` table, records the ports your repo already hardcodes as `declared`, and names Compose services that aren't one of the ten roles as `extras`. Project numbers are permanent from that moment; `berth project list` shows them. `berth doctor` checks lsof, Docker, the policy and the Claude Code wiring.
+`berth project add` is additive and idempotent: it appends one `[projects.<name>]` table, records the ports your repo already hardcodes as `declared`, and names Compose services that aren't one of the ten roles as `extras`. Project numbers are permanent from that moment; `berth project list` shows them. `berth doctor` checks lsof, Docker, the policy and the Claude Code wiring (plugin or manual hooks).
 
-**With Claude Code**, install the plugin instead of wiring hooks by hand: it ships the SessionStart/SessionEnd hooks, the MCP server and two skills (`berth-ports` for day-to-day, `berth-onboard` for registering a repo):
+**Who does what**
 
-```bash
-claude plugin marketplace add amiable-dev/berth
-claude plugin install berth@berth
-```
+| Once per machine (human, or the agent on request) | Per repository (the agent, via the skill) | Human decisions |
+|---|---|---|
+| install the plugin; optionally the global CLI for your own terminal | `berth project add .`, `berth env`, `berth launch-json --write`, claims and releases for its own session | a project's permanent number if you want a specific one, shared stacks, and the human-only commands: `free`, `--force`, `hooks install`, `worktrees prune`, `init --force` |
 
-Your agent can then register the repository it is working in by itself (the `berth-onboard` skill runs `berth project add .`). The manual route (`berth hooks install`, `claude mcp add --scope user berth -- berth mcp`, the rules in [`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md)) still works and is described under Claude Code integration.
+The manual route for Claude Code (`berth hooks install`, `claude mcp add --scope user berth -- berth mcp`, the rules in [`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md)) still works and is described under Claude Code integration.
 
 ## Day to day
 
@@ -135,7 +147,7 @@ Truth comes from four read-only sources, none of which need sudo: `lsof` for you
 
 ## Claude Code integration
 
-The plugin (`claude plugin marketplace add amiable-dev/berth`, then `claude plugin install berth@berth`) bundles everything below. Installed by hand, the pieces are:
+The plugin bundles everything below and, through the SessionStart hook, puts its own `berth` on the session's PATH. Installed by hand, the pieces are:
 
 - **SessionStart** runs `berth context`: read-only, under 200 ms, always exit 0. It injects the project's block, current leases, shared services and any live conflict touching this project, and appends the role-port exports to `CLAUDE_ENV_FILE`.
 - **SessionEnd** runs `berth session-end`: records that the session ended; its leases go `stale` once nothing is bound.

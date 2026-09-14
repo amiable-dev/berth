@@ -7,6 +7,8 @@ description: Use when asked to add, register or set up this repository (or anoth
 
 Goal: this checkout gets a permanent project number, its hardcoded ports are recorded, and the tools that start servers here use berth's numbers. Everything below is additive; nothing renumbers or edits other projects.
 
+`berth` is on this session's PATH when the berth plugin is installed (the SessionStart hook adds the plugin's `bin/`); the same operations are also available as MCP tools (`berth_env`, `berth_check`, `berth_who`, `berth_ls`, `berth_claim`, `berth_release`). If neither works, the plugin is not installed: tell the human to run `claude plugin marketplace add amiable-dev/berth` and `claude plugin install berth@berth`.
+
 ## Steps
 
 1. **Check the machine.** `berth doctor --json`. If the `policy` check fails because the file is missing, create the starting policy: `berth init`. (If a policy exists, never re-run `init`; replacing a policy is a human decision.)
