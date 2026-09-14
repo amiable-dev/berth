@@ -16,6 +16,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Keep a Changelog discipline, enforced: a pull request must touch CHANGELOG.md unless it is
+  # from Dependabot or carries the `skip-changelog` label. Required by the main ruleset.
+  changelog:
+    name: Changelog updated
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Require a CHANGELOG.md change
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          case "$PR_AUTHOR" in dependabot*) echo "Dependabot PR: exempt"; exit 0 ;; esac
+          case ",$PR_LABELS," in *,skip-changelog,*) echo "skip-changelog label: exempt"; exit 0 ;; esac
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -qx 'CHANGELOG.md'; then
+            echo "CHANGELOG.md updated"
+          else
+            echo "::error::CHANGELOG.md was not changed. Add a note under [Unreleased], or label the PR skip-changelog."
+            exit 1
+          fi
+
   check:
     name: Node ${{ matrix.node }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
