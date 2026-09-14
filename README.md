@@ -2,6 +2,8 @@
 
 **Give every project on your machine its own block of ports, then let your agents and your terminal agree on who holds what.**
 
+Documentation: https://amiable-dev.github.io/berth/ · Package: [`@amiable-dev/berth`](https://www.npmjs.com/package/@amiable-dev/berth)
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/port-rule-dark.png">
   <img alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp. port = 10000 + 1000·P + 100·W + R" src="docs/images/port-rule-light.png" width="100%">

@@ -279,6 +279,29 @@ button {
 .search:focus {
   border-color: var(--dim);
 }
+.links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.links a.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--dim);
+  text-decoration: none;
+}
+.links a.btn-icon:hover,
+.links a.btn-icon:focus-visible {
+  color: var(--fg);
+  border-color: var(--dim);
+}
+
 .ctl {
   display: flex;
   align-items: center;

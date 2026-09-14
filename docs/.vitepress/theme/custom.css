@@ -1,0 +1,6 @@
+/* Show the README image variant that matches the active theme. */
+.dark .light-only { display: none; }
+html:not(.dark) .dark-only { display: none; }
+:root { --vp-c-brand-1: #0b6e75; --vp-c-brand-2: #0a5f66; --vp-c-brand-3: #0b6e75; --vp-c-brand-soft: rgba(11, 110, 117, 0.14); }
+.dark { --vp-c-brand-1: #4cc1c8; --vp-c-brand-2: #6fd0d6; --vp-c-brand-3: #4cc1c8; --vp-c-brand-soft: rgba(76, 193, 200, 0.16); }
+.vp-doc img { border: 1px solid var(--vp-c-divider); border-radius: 6px; }

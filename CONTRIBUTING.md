@@ -248,6 +248,18 @@ gh pr merge --squash --auto        # merges itself once the checks are green
 
 Dependabot pull requests follow the same path. Security reports go through GitHub's private vulnerability reporting (see SECURITY.md); secret scanning with push protection and Dependabot security updates are on, and the Actions token defaults to read-only.
 
+### The documentation site
+
+The site at https://amiable-dev.github.io/berth/ is VitePress in `docs/` (its own `package.json` and lockfile; Dependabot tracks it). `docs/index.md` and `docs/guide/`, `docs/reference/` are the engineer-facing pages; `DESIGN.md`, `RESEARCH.md` and the ADRs render as they are. Locally:
+
+```bash
+npm ci --prefix docs
+npm run dev --prefix docs          # live preview
+npm run build --prefix docs        # what CI runs; the PR build must pass
+```
+
+`.github/workflows/docs.yml` builds on pull requests and deploys on pushes to `main`. Vue interpolation is disabled for the pages (the design documents quote Docker Go templates), so `{{ … }}` in markdown is literal.
+
 ### The Claude Code plugin
 
 The repository is also a Claude Code plugin (ADR-007): `.claude-plugin/plugin.json`, `hooks/hooks.json`, `.mcp.json` and `skills/*/SKILL.md` ship in the npm package, and `.claude-plugin/marketplace.json` points at the published package. To try local changes:
