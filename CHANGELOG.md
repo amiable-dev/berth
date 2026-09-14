@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The npm package's `homepage` is the documentation site (https://amiable-dev.github.io/berth/) instead of the README; npmjs.com and `npm docs` link there from the next release.
+
 ## [0.1.5] - 2026-09-14
 
 **Docs release.** A documentation site for engineers at https://amiable-dev.github.io/berth/, and the dashboard header links to it and to the repository.
