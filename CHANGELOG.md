@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-14
+
+**The plugin release.** berth becomes a Claude Code plugin (hooks, MCP server, two skills) installable from the repository's own marketplace; the CLI configures itself (`berth init`, `berth project add`); human-only commands are fenced off from agent sessions; the repository is hardened and every code-scanning finding is resolved.
+
 ### Added
 
 - `berth init` writes a generic starting policy; `berth project add [path]` registers a repository with the next free permanent number, its scanned `declared` ports and Compose-derived `extras`, additively and idempotently; `berth project list` (ADR-006).
@@ -77,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/amiable-dev/berth/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/amiable-dev/berth/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/amiable-dev/berth/releases/tag/v0.1.0

@@ -1,10 +1,20 @@
 {
   "name": "berth",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Advisory port registry for concurrent agent sessions: SessionStart context with this checkout's ports, an MCP server, and skills for day-to-day port use and registering a repo.",
-  "author": { "name": "Amiable Dev", "email": "chris@amiable.dev", "url": "https://github.com/amiable-dev" },
+  "author": {
+    "name": "Amiable Dev",
+    "email": "chris@amiable.dev",
+    "url": "https://github.com/amiable-dev"
+  },
   "homepage": "https://github.com/amiable-dev/berth",
   "repository": "https://github.com/amiable-dev/berth",
   "license": "MIT",
-  "keywords": ["ports", "dev-server", "claude-code", "agents", "localhost"]
+  "keywords": [
+    "ports",
+    "dev-server",
+    "claude-code",
+    "agents",
+    "localhost"
+  ]
 }
