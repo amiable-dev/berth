@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- ADR-009 (proposed, council-reviewed): how a registered repository stops hardcoding ports. Environment first, the project's own W0 port as the default, strict bind; a `berth-migrate` skill with one recipe per tool (#17); three scanner zones so a migrated default is never re-declared, and `berth project declared --prune` as a rail-guarded, audited exception to additive-only policy edits (#16).
+
 ### Changed
 
 - The npm package's `homepage` is the documentation site (https://amiable-dev.github.io/berth/) instead of the README; npmjs.com and `npm docs` link there from the next release.
