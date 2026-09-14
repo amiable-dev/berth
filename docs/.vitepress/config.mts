@@ -43,9 +43,6 @@ export default defineConfig({
   srcExclude: ['**/node_modules/**', 'images/README.md', 'adr/ADR-000-template.md'],
   ignoreDeadLinks: true,
   head: [['link', { rel: 'icon', href: '/berth/favicon.svg', type: 'image/svg+xml' }]],
-  // The design documents quote Docker Go templates ({{.Label …}}); no page uses Vue interpolation,
-  // so give the template compiler delimiters that never occur.
-  vue: { template: { compilerOptions: { delimiters: ['{{{{', '}}}}'] } } },
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },

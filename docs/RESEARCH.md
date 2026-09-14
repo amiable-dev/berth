@@ -44,6 +44,7 @@ Four repos ship a near-identical observability stack (Grafana, Prometheus, OTel 
 
 ## Named-host proxies and port managers
 
+::: v-pre
 | Tool | Activity | Stars | Assigns ports? | Queryable state? | Non-HTTP? | Verdict |
 |---|---|---|---|---|---|---|
 | [portless](https://github.com/vercel-labs/portless) (Vercel Labs) | v0.15.6, Aug 2026 | 12.4k | Yes: random `PORT` in 4000–4999, `--port` injected for Vite | `portless list`, `~/.portless/routes.json` | No (HTTPS proxy; `alias name port` for anything else) | Best named-URL layer. Its own allocator conflicts with fixed blocks unless used via `alias`. |
@@ -66,6 +67,7 @@ Four repos ship a near-identical observability stack (Grafana, Prometheus, OTel 
 | get-port / portfinder / detect-port | active | 929 / 899 / 392 | Find-a-free-port only | None across processes | Numbers | Building blocks. |
 | Tilt | v0.37.7 | 10k | No (declared `port_forwards`) | `tilt get portforwards -o json` | Yes (k8s) | Kubernetes-centric. |
 | puma-dev, Laravel Valet | slow / active | 1.8k / 2.6k | No | `valet proxies` | No | Rack / PHP ecosystems. |
+:::
 
 ## Session managers and orchestrators
 
@@ -103,6 +105,7 @@ No OSS tool combines a port-range map, PID, cwd and Docker/Colima attribution on
 
 ## Verified mechanisms (local tests, 2026-09-13)
 
+::: v-pre
 | Mechanism | Result |
 |---|---|
 | `docker ps --format '{{.Label "com.docker.compose.project.working_dir"}}'` | Attributes compose containers to their repo directory. `docker run` containers return empty. |
@@ -110,6 +113,7 @@ No OSS tool combines a port-range map, PID, cwd and Docker/Colima attribution on
 | `docker-compose -f base.yml -f override.yml config` with `ports: !override` | Replaces the hardcoded `5432:5432` with `25432:5432`; no repo edit needed. |
 | `DB_PORT=25432 docker-compose -f env.yml config` with `"${DB_PORT:-5432}:5432"` | Substitutes correctly. |
 | `lsof -nP -iTCP -sTCP:LISTEN` timing | ≈0.05 s; cwd lookup for all listeners ≈0.12 s in two calls. |
+:::
 
 ## Bottom line
 
