@@ -7,6 +7,8 @@ description: Use before starting any dev server, database or Compose stack, when
 
 berth gives every project a permanent block of ports and records who holds what. It is advisory: it tells you the truth and never blocks or kills. Your job is to use the ports it assigns and to report what you actually bound.
 
+`berth` is on this session's PATH when the plugin is installed; the MCP tools `berth_env`, `berth_who`, `berth_check`, `berth_ls`, `berth_claim` and `berth_release` do the same jobs if you prefer tools to a shell.
+
 ## Before you bind anything
 
 1. If the session started with a "## Ports (berth)" section, the numbers are already in the environment: `PORT`, `WEB_PORT`, `API_PORT`, `DB_PORT`, `CACHE_PORT`, `SMTP_PORT`, `MAIL_UI_PORT`, `DOCS_PORT`, `WORKER_PORT`, `OTLP_GRPC_PORT`, `OTLP_HTTP_PORT`, plus `BERTH_BLOCK`. Otherwise run:

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The plugin ships `bin/berth`, and the SessionStart hook puts it on the session's PATH, so `berth` works in every Bash call of a Claude Code session without a global npm install (`BERTH_BIN` is exported either way). The README now documents installation from an agent session and from a terminal separately, with a who-does-what table; the skills mention the MCP tools as an alternative to the CLI.
+
 ## [0.1.2] - 2026-09-14
 
 **The plugin release.** berth becomes a Claude Code plugin (hooks, MCP server, two skills) installable from the repository's own marketplace; the CLI configures itself (`berth init`, `berth project add`); human-only commands are fenced off from agent sessions; the repository is hardened and every code-scanning finding is resolved.

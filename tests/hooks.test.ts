@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/args.js';
-import { cmdContext, cmdSessionEnd } from '../src/commands/hooks.js';
+import { cmdContext, cmdSessionEnd, pluginPathExports } from '../src/commands/hooks.js';
 import { readSession } from '../src/ledger.js';
 import { fixturePolicy, useTempState, writePolicy } from './helpers.js';
 
@@ -64,5 +64,20 @@ describe('hooks', () => {
     );
     expect(readSession('sess-hook-3')?.ended).toBeTruthy();
     expect(existsSync(path.join(state, 'leases.json'))).toBe(false);
+  });
+});
+
+describe('plugin PATH export', () => {
+  it('adds the plugin bin to PATH only when berth is not already on it', () => {
+    const root = path.resolve(__dirname, '..');
+    const off = pluginPathExports({ BERTH_PLUGIN_ROOT: root, PATH: '/usr/bin:/bin' });
+    expect(off[0]).toMatch(/^export PATH=".*\/bin":"\$PATH"$/);
+    expect(off[1]).toMatch(/^export BERTH_BIN=/);
+    const on = pluginPathExports({
+      BERTH_PLUGIN_ROOT: root,
+      PATH: `${path.join(root, 'bin')}:/usr/bin`,
+    });
+    expect(on).toHaveLength(1);
+    expect(pluginPathExports({ PATH: '/usr/bin' })).toEqual([]);
   });
 });

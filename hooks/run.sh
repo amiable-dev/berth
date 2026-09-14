@@ -29,4 +29,7 @@ if [ ! -f "$bundle" ]; then
   [ "$is_hook" = 1 ] && exit 0
   exit 127
 fi
+# Tell the CLI where the plugin lives so `berth context` can put bin/ on the session PATH.
+BERTH_PLUGIN_ROOT="$root"
+export BERTH_PLUGIN_ROOT
 exec "$node_bin" "$bundle" "$@"

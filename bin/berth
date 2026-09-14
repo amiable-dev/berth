@@ -1,0 +1,4 @@
+#!/bin/sh
+# berth plugin shim: put this directory on PATH (the SessionStart hook does it for every Claude
+# Code session) and `berth` runs the bundle shipped with the plugin, no global install needed.
+exec sh "$(cd "$(dirname "$0")/.." && pwd)/hooks/run.sh" "$@"
