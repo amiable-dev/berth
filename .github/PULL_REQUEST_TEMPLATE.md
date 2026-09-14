@@ -27,6 +27,7 @@ Describe how you tested these changes:
 - [ ] No new runtime dependencies: `package.json` still has no `dependencies` block ([ADR-005](../docs/adr/ADR-005-node20-single-bundle-zero-runtime-deps.md))
 - [ ] Hooks and `berth check` still exit 0 on every path this touches ([ADR-001](../docs/adr/ADR-001-advisory-registry-not-enforcement.md))
 - [ ] `--json` output is backward compatible, or the change is called out below
+- [ ] `CHANGELOG.md` has a note under `[Unreleased]` (or the PR carries the `skip-changelog` label; Dependabot PRs are exempt)
 - [ ] Documentation updated (README, ADRs). `docs/DESIGN.md` is the historical record of the accepted design; record changes as ADRs rather than editing it
 - [ ] CHANGELOG.md updated under `[Unreleased]` (for user-facing changes)
 - [ ] ADR added or superseded if this changes a recorded decision

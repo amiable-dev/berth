@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Every pull request must add a note under `[Unreleased]`: a required CI check fails otherwise (Dependabot PRs and the `skip-changelog` label are exempt). GOVERNANCE.md describes the single-maintainer period and what changes when a second maintainer joins.
+
 ## [0.1.3] - 2026-09-14
 
 **Agent sessions need nothing but the plugin.** The plugin now carries `bin/berth` and puts it on each session's PATH, so `berth` works from Claude Code without a global install.
 
 ### Added
 
+- `berth doctor` recognises the installed Claude Code plugin and warns when the manual hooks are also present.
 - The plugin ships `bin/berth`, and the SessionStart hook puts it on the session's PATH, so `berth` works in every Bash call of a Claude Code session without a global npm install (`BERTH_BIN` is exported either way). The README now documents installation from an agent session and from a terminal separately, with a who-does-what table; the skills mention the MCP tools as an alternative to the CLI.
 
 ## [0.1.2] - 2026-09-14
@@ -32,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Writers of `policy.toml` (`project add`, `scan --write`) serialise on a lock; `project add` requires a git repository root unless `--allow-non-git`.
 - The plugin's hooks and MCP server start through `hooks/run.sh`, which finds Node in common version-manager locations and never fails a session when it cannot.
 
-## [0.1.1] - 2026-09-13
+## [0.1.1] - 2026-09-14
 
 **Review fixes, a map that shows what is actually running, and a README people can start from.** Everything an eight-angle code review of 0.1.0 found is fixed; the dashboard map now surfaces legacy ports per project; the README leads with the decode plate and a day-to-day guide.
 

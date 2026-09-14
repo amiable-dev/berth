@@ -93,6 +93,19 @@ For contentious decisions without clear consensus, once there is more than one m
 | Breaking changes | 1 maintainer plus an accepted ADR |
 | Security fixes | 1 maintainer (expedited) |
 
+### Single-maintainer period
+
+While [MAINTAINERS.md](MAINTAINERS.md) lists one maintainer, "1 maintainer" above means the author of the change: there is no second human to approve. What is in force instead, and what changes when a second maintainer joins:
+
+| Today (one maintainer) | With a second maintainer |
+|---|---|
+| Every change lands by pull request through the `main` ruleset: six required checks (CI on Node 20 and 22 for Linux and macOS, CodeQL, Dependency Review), a changelog check, review threads resolved, linear history, squash only, no bypass | Unchanged |
+| Reviews come from CodeQL, Dependency Review, the LLM council for ADRs, and self-review against the PR checklist | The ruleset gains one required approval, code-owner review and last-push approval; `.github/CODEOWNERS` lists both maintainers |
+| OpenSSF Scorecard's Code-Review check and the approver-related Branch-Protection warnings are dismissed on the security tab with this rationale | Those dismissals are reopened and expected to pass |
+| Releases are staged on npm and approved by the maintainer with 2FA | Either maintainer may approve a staged release; the approver is never the PR's author when that can be avoided |
+
+Adding the second maintainer is itself a pull request that updates MAINTAINERS.md, CODEOWNERS and this section, after which the maintainer who merges it updates the ruleset.
+
 ### Breaking Changes
 
 berth is pre-1.0. Under Semantic Versioning, a **minor** release may therefore contain breaking changes to the `--json` output shapes, the policy file schema, the ledger and claim file formats, or the hook contract. Each such change requires:
