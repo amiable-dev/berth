@@ -204,7 +204,7 @@ See [SECURITY.md](SECURITY.md) for the disclosure policy.
 
 - [docs/DESIGN.md](docs/DESIGN.md): the council-reviewed design, decisions and rollout.
 - [docs/RESEARCH.md](docs/RESEARCH.md): the OSS landscape it was measured against.
-- [docs/adr/](docs/adr/): ADR-001 advisory not enforcement · ADR-002 the decodable port scheme · ADR-003 daemonless ledger and lock-free claims · ADR-004 truth sources and attribution · ADR-005 Node 20 single bundle · ADR-006 self-configuring CLI · ADR-007 plugin, skills and MCP · ADR-008 agent guardrails.
+- [docs/adr/](docs/adr/): ADR-001 advisory not enforcement · ADR-002 the decodable port scheme · ADR-003 daemonless ledger and lock-free claims · ADR-004 truth sources and attribution · ADR-005 Node 20 single bundle · ADR-006 self-configuring CLI · ADR-007 plugin, skills and MCP · ADR-008 agent guardrails · ADR-009 port migration recipes (proposed).
 - [design_handoff_berth_ui/](design_handoff_berth_ui/): the dashboard design pack and prototype the UI was built to.
 
 ## Contributing

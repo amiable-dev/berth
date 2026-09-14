@@ -29,6 +29,7 @@ const design = [
       { text: 'ADR-006 Self-configuring CLI', link: '/adr/ADR-006-self-configuring-cli' },
       { text: 'ADR-007 Plugin, skills and MCP', link: '/adr/ADR-007-plugin-skills-and-mcp' },
       { text: 'ADR-008 Agent guardrails', link: '/adr/ADR-008-agent-guardrails' },
+      { text: 'ADR-009 Port migration recipes', link: '/adr/ADR-009-port-migration-recipes' },
     ],
   },
 ];
