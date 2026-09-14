@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-14
+
+**Docs release.** A documentation site for engineers at https://amiable-dev.github.io/berth/, and the dashboard header links to it and to the repository.
+
 ### Added
 
 - Documentation site at https://amiable-dev.github.io/berth/ (VitePress in `docs/`, built and deployed by `.github/workflows/docs.yml`): getting started, concepts, day-to-day use, Claude Code and agents, the dashboard, troubleshooting, and CLI, policy, JSON/MCP and safety references, plus the design document and ADRs.
@@ -107,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/amiable-dev/berth/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/amiable-dev/berth/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/amiable-dev/berth/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/amiable-dev/berth/compare/v0.1.1...v0.1.2
