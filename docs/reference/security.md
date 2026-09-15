@@ -8,7 +8,7 @@ Every observation comes from `lsof`, `netstat`, `docker ps` and `ps` run through
 
 ## Advisory, and a rail for agents
 
-berth never blocks a command and never kills a process on its own. `berth free` exists for humans, signals only processes you own, never containers or VM proxies, and refuses ports held by another live session unless forced. Human-only commands (`free`, any `--force`, `hooks install|uninstall`, `worktrees prune`, `init --force`, `adopt --owner human`) run only for a human at an interactive terminal with no Claude marker in the environment, or with `BERTH_ALLOW_DESTRUCTIVE=1` set deliberately. Refusals and overrides are appended to `~/.local/state/berth/audit.log`. This is protection against accidental misuse by an agent, not a security boundary: a person with a shell can always run the same command.
+berth never blocks a command and never kills a process on its own. `berth free` exists for humans, signals only processes you own, never containers or VM proxies, and refuses ports held by another live session unless forced. Human-only commands (`free`, any `--force`, `hooks install|uninstall`, `worktrees prune`, `init --force`, `adopt --owner human`, `tidy` without `--dry-run`) run only for a human at an interactive terminal with no Claude marker in the environment, or with `BERTH_ALLOW_DESTRUCTIVE=1` set deliberately. Refusals and overrides are appended to `~/.local/state/berth/audit.log`, and the refusal message names the reason and the one-command apply path (`berth tidy --project <name>`). This is protection against accidental misuse by an agent, not a security boundary: a person with a shell can always run the same command.
 
 ## No daemon, safe writes
 

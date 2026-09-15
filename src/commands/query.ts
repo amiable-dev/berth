@@ -208,6 +208,15 @@ export function renderCheck(report: CheckReport): string {
   }
   if (!report.host.dockerAvailable)
     lines.push('\n(docker not reachable: container ports are attributed by process only)');
+  // One suggestion per project that has a stale or orphan lease: tidy is the one command that
+  // applies that part of the plan (unmanaged ports still need a human's adopt decision).
+  const releasable = new Set(
+    report.ports
+      .filter((p) => p.state === 'stale' || p.state === 'orphan')
+      .map((p) => p.project)
+      .filter((p): p is string => Boolean(p)),
+  );
+  for (const proj of [...releasable].sort()) lines.push(`  run: berth tidy --project ${proj}`);
   return lines.join('\n');
 }
 

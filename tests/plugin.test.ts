@@ -57,6 +57,9 @@ describe('claude code plugin packaging', () => {
       expect(fm, n).toMatch(/^name: /m);
       expect(fm, n).toMatch(/^description: /m);
       expect(text, n).not.toMatch(/berth free|--force/);
+      // tidy without --dry-run applies the plan and is human-only (ADR-008); a skill may only
+      // ever tell the agent to run the --dry-run form.
+      expect(text, n).not.toMatch(/berth tidy(?!\s+--dry-run)/);
       expect(text.length, n).toBeLessThan(12000);
     }
   });

@@ -6,6 +6,7 @@ import { cmdInit, cmdProject } from './commands/project.js';
 import { cmdCheck, cmdDoctor, cmdLs, cmdWho, type IO } from './commands/query.js';
 import { cmdScan } from './commands/scan.js';
 import { cmdShellInit } from './commands/shell.js';
+import { cmdTidy } from './commands/tidy.js';
 import { addClaim, LockTimeoutError, releaseLease } from './ledger.js';
 import { serveStdio } from './mcp.js';
 import { auditLogPath } from './paths.js';
@@ -35,6 +36,7 @@ usage: berth <command> [options]
   release --port P | --all [--force] [--json]
   adopt <port> --owner human|session [--project X] [--role R] [--json]
   free <port> [--force] [--json]                  SIGTERM an own-user listener (refuses others')
+  tidy [--project X] [--dry-run] [--json]         release stale/orphan leases, list unmanaged ports
   init [--base N]                                 write a starting policy (no projects)
   project add [path] [--name N] [--number P]      register a repo: next free P, declared ports, extras
   project list [--json]                           registered projects and their blocks
@@ -51,8 +53,9 @@ usage: berth <command> [options]
   version | help
 
 env: BERTH_POLICY, BERTH_CONFIG_DIR, BERTH_STATE_DIR, NO_COLOR, BERTH_ALLOW_DESTRUCTIVE.
-free, --force, hooks install/uninstall, worktrees prune, init --force and adopt --owner human need a human at an
-interactive terminal (refused from agent sessions and non-interactive shells unless BERTH_ALLOW_DESTRUCTIVE=1).
+free, --force, hooks install/uninstall, worktrees prune, init --force, adopt --owner human and tidy without
+--dry-run need a human at an interactive terminal (refused from agent sessions and non-interactive shells unless
+BERTH_ALLOW_DESTRUCTIVE=1).
 Exit codes: 0 ok, 1 refused/failed, 2 usage.`;
 
 async function cmdUi(args: ParsedArgs, io: IO): Promise<number> {
@@ -118,6 +121,7 @@ const COMMANDS: Record<string, (args: ParsedArgs, io: IO) => Promise<number>> = 
   release: cmdRelease,
   adopt: cmdAdopt,
   free: cmdFree,
+  tidy: cmdTidy,
   scan: cmdScan,
   init: cmdInit,
   project: cmdProject,
@@ -160,7 +164,21 @@ export function isDestructive(args: ParsedArgs): boolean {
     return true;
   if (args.cmd === 'worktrees' && args.positional[0] === 'prune') return true;
   if (args.cmd === 'adopt' && args.flags.owner === 'human') return true;
+  if (args.cmd === 'tidy' && !flagBool(args.flags, 'dry-run')) return true;
   return false;
+}
+
+/** A short, command-specific explanation for the human-only refusal message below. */
+function humanOnlyReason(args: ParsedArgs): string {
+  if (args.cmd === 'tidy') return 'tidy without --dry-run releases leases';
+  if (args.cmd === 'free') return 'free sends SIGTERM to a live process';
+  if (args.cmd === 'hooks')
+    return `hooks ${args.positional[0] ?? ''} rewrites ~/.claude/settings.json`;
+  if (args.cmd === 'worktrees') return 'worktrees prune frees a permanent worktree slot';
+  if (args.cmd === 'init') return 'init --force replaces the policy';
+  if (args.cmd === 'adopt') return 'adopt --owner human attributes a port to a person';
+  if (args.flags.force === true) return `--force on ${args.cmd} overrides an ownership refusal`;
+  return `${args.cmd} is a human-only command`;
 }
 
 export function inAgentSession(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -217,7 +235,7 @@ export async function main(argv: string[], io: IO = DEFAULT_IO): Promise<number>
         ? 'an agent session (CLAUDECODE is set)'
         : 'a non-interactive shell';
       io.err(
-        `berth: "${argv.join(' ')}" is refused from ${why}: it is a human-only command. Run it from your own terminal, or set BERTH_ALLOW_DESTRUCTIVE=1 to allow it deliberately.`,
+        `berth: "${argv.join(' ')}" is refused from ${why}: ${humanOnlyReason(args)}; it is a human-only command (ADR-008). Run it from your own terminal, or \`berth tidy --project <name>\` applies the plan berth has shown you. Set BERTH_ALLOW_DESTRUCTIVE=1 to allow it deliberately.`,
       );
       audit(
         `refused argv=${JSON.stringify(argv)} agent=${inAgentSession()} tty=${Boolean(process.stdin.isTTY)}`,

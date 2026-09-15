@@ -68,6 +68,10 @@ Turns an unmanaged listener into a lease. `--owner session` attributes it to the
 
 Human-only. Sends SIGTERM to the own-user process bound to the port, waits three seconds, and with `--force` follows with SIGKILL. Never signals containers or VM proxies, and refuses ports held by another live session unless forced.
 
+### `berth tidy [--project X] [--dry-run] [--json]`
+
+The plan from a fresh `check`: `stale` and `orphan` leases (any owner) to release, and `unmanaged` ports to list with the `adopt` suggestion only — adoption needs a decision about the owner, so tidy never does it for you. `ok`, `idle`, `conflict` and `drift` records are never touched. `--project` limits the plan to that project's block. `--dry-run` prints the plan with evidence per row and is agent-available. Applying — the same command without `--dry-run` — releases the plan's leases (`--force`, any owner), writes one audit line per release, and is human-only (ADR-008); a second run with nothing left to do reports "nothing to tidy".
+
 ### `berth compact [--json]`
 
 Folds per-session claim files into `leases.json` under the ledger lock. Reads do this opportunistically; the command exists for scripts.

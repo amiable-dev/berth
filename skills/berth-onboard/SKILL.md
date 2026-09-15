@@ -23,7 +23,7 @@ Goal: this checkout gets a permanent project number, its hardcoded ports are rec
    - Claude Code desktop preview pane: `berth launch-json --write` creates or updates `.claude/launch.json` entries named `<project> web (berth W0)` and similar, keeping any entries that are not berth's. The file is excluded from git automatically (`.git/info/exclude`, never `.gitignore`) unless it is already tracked or ignored, so it is never committed by accident.
 4. **Point the code at the numbers, with the human's approval.** Where a config hardcodes a port, prefer reading the environment (`PORT`, `API_PORT`, `DB_PORT`, …) and turn on strict mode (`vite --strictPort`, `server.strictPort: true`). Propose the diff; apply it only when asked. Do not rewrite Compose files: the override covers them.
 5. **Verify.** `berth check` should show the project's ports as `ok` or `idle` and nothing under attention for this block. `berth ls --project <name>` shows the table. If the dashboard is running, `http://127.0.0.1:10000/?view=map` shows the new row.
-6. **Report** the project number, the block, the ports by role, and any legacy ports still hardcoded, in one short message.
+6. **Report** the project number, the block, the ports by role, any legacy ports still hardcoded, and the leftovers `berth tidy --dry-run` finds (stale or orphan leases a human can release in one command; unmanaged ports a human can adopt) in one short message.
 
 ## Worktrees
 
@@ -31,4 +31,4 @@ A git worktree of a registered repo gets its own hundred-port slice the first ti
 
 ## Never
 
-- Never change an existing project's `P`, never edit another project's table, never replace an existing policy, never kill a process or override an ownership refusal, never install or remove hooks. The CLI refuses those commands in an agent session; ask the human instead.
+- Never change an existing project's `P`, never edit another project's table, never replace an existing policy, never kill a process or override an ownership refusal, never install or remove hooks, never apply `tidy` yourself (only `--dry-run` is agent-available). The CLI refuses those commands in an agent session; ask the human instead.
