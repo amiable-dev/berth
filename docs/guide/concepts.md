@@ -50,16 +50,18 @@ Liveness beats the clock: a lease whose pid is alive and whose port is bound sta
 
 | State | Meaning | Advisory |
 |---|---|---|
-| `ok` | leased and bound by the expected owner, or a shared service | none |
+| `ok` | leased and bound by the expected owner, a shared service, or a holder already attributed to the block's own project | none |
 | `idle` | leased or declared, nothing bound, owner alive | shown dimmed |
 | `stale` | leased, nothing bound, owner pid gone | `berth release --port N`; never auto-killed |
 | `orphan` | lease directory no longer exists (worktree removed) | release; the tombstone keeps the slot |
-| `unmanaged` | bound inside a managed range with no lease | `berth adopt N --owner human` |
+| `unmanaged` | bound inside a managed range with no lease and no attribution | `berth adopt N --owner human` |
 | `squatter` | bound inside another project's block by a different project or session | `berth who N`; do not kill |
 | `conflict` | lease owner differs from the live holder | `berth who N --json`; the owning session's belief is wrong |
 | `drift` | config declares a port outside its allocation, or a shared stack is partially up | `berth scan --write`; never reassigned |
 
 Every state comes with exactly one advisory command. berth prints it; a human or an agent decides.
+
+A port inside a project's block is `ok` without a lease when its live holder is already attributed to that same project — by the compose `working_dir` label or by process cwd; the report calls this `attribution: "evidence"` to distinguish it from a leased `ok` (`attribution: "lease"`). Only a holder with no attribution at all is `unmanaged`; a container started with `docker run` instead of `docker-compose` is one such case, and the advisory says so instead of implying berth just declined to adopt it.
 
 ## Advisory, always
 

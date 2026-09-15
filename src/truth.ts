@@ -24,6 +24,16 @@ export function isVmProxy(cmd: string): boolean {
   );
 }
 
+/**
+ * True for a container started with `docker run` (or otherwise outside Compose): it carries
+ * neither the `com.docker.compose.project` nor the `com.docker.compose.project.working_dir`
+ * label, so berth has no path to attribute it by. Shared by the reconciler's `unmanaged`
+ * advisory copy and by anything else that needs to tell a hand-run container from a Compose one.
+ */
+export function isUnlabelledContainer(c: Container): boolean {
+  return !c.composeProject && !c.workingDir;
+}
+
 function portOfName(name: string): number | null {
   const i = name.lastIndexOf(':');
   if (i < 0) return null;

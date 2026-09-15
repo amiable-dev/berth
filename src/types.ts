@@ -88,6 +88,8 @@ export interface PortRecord {
   advisory: { text: string; command?: string } | null;
   url?: string;
   age?: string;
+  /** How the project/worktree/role attribution is known: a lease record, or live evidence (compose label, cwd). Omitted when there is no attribution. */
+  attribution?: 'lease' | 'evidence';
 }
 
 export interface SessionRecord {
