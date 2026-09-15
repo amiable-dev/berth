@@ -38,8 +38,8 @@ It prints the lease, the live holder (process, container or session), the eviden
 | State | Meaning | What to do |
 |---|---|---|
 | `ok` | expected owner is bound | use a different role port; this one is taken legitimately |
-| `idle` / `stale` | leased, nothing bound | `berth release --port N` only if the lease is yours; otherwise report it |
-| `orphan` | lease cwd is gone | report it; a human releases it |
+| `idle` / `stale` | leased, nothing bound | `berth release --port N` only if the lease is yours; otherwise report it (or show the plan below) |
+| `orphan` | lease cwd is gone | report it; show the plan below for a human to apply |
 | `unmanaged` | bound, no lease, in a managed range | if you started it, `berth adopt N --owner session`; otherwise report |
 | `squatter` / `conflict` | someone else is in this block | report the holder; do not kill |
 | `drift` | config and allocation disagree | report; `berth scan --write` is the human's fix |
@@ -50,7 +50,17 @@ It prints the lease, the live holder (process, container or session), the eviden
 
 When a scratch server is done: `berth release --port <port>`. Ports claimed by role stay leased for the checkout; releasing them is optional.
 
+## Leftovers
+
+`stale` and `orphan` leases (nothing bound, owner gone or the lease's cwd is missing) and `unmanaged` listeners pile up over a session or after a migration. Show what a human could clean up in one command:
+
+```bash
+berth tidy --dry-run --json
+```
+
+It prints the plan: which leases it would release (any owner), and which unmanaged ports it can only suggest adopting (adoption needs a decision about the owner, so berth never does that for you). Tell the human what `--dry-run` showed and that the same command, without `--dry-run`, applies the release half; it is human-only (ADR-008), so ask them to run it themselves — do not run it yourself.
+
 ## Never
 
-- Never kill or signal a process that holds a port, never override an ownership refusal, never edit `~/.claude/settings.json` or an existing project number in the policy. Those are human decisions; the CLI refuses the corresponding commands inside an agent session, and the right move is to report and ask.
+- Never kill or signal a process that holds a port, never override an ownership refusal, never edit `~/.claude/settings.json` or an existing project number in the policy, never apply `tidy` yourself (only `--dry-run` is agent-available). Those are human decisions; the CLI refuses the corresponding commands inside an agent session, and the right move is to report and ask.
 - Never let a framework choose a port; never guess a port from memory when `berth env` can tell you.

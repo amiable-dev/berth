@@ -133,6 +133,16 @@ berth scan                # ports found in configs vs what the policy declares
 berth scan --write        # add the missing ones to each project's declared list
 ```
 
+## After a migration
+
+Registering a repository, or a burst of claim/release activity, leaves leftovers: a lease whose owner session ended (`stale`), a lease whose worktree was removed (`orphan`), or a listener nobody claimed (`unmanaged`). See the plan in one command:
+
+```bash
+berth tidy --project <name> --dry-run
+```
+
+This shows every `stale`/`orphan` lease it would release and every `unmanaged` port it can only suggest adopting (adoption needs a decision about who owns it, so berth never does that on its own). The same command without `--dry-run` applies the release half — any owner, one audit line per port — and is human-only (ADR-008): an agent session can show you the plan, but only you can apply it. Running it again once everything is clean reports "nothing to tidy".
+
 ## Worktrees and names
 
 ```bash

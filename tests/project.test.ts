@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/args.js';
-import { main } from '../src/cli.js';
+import { isDestructive, main } from '../src/cli.js';
 import {
   addProject,
   appendProjectTable,
@@ -183,6 +183,7 @@ describe('agent guard', () => {
       ['worktrees', 'prune', '--project', 'x', '--w', '1'],
       ['release', '--port', '1234', '--force'],
       ['init', '--force'],
+      ['tidy'],
     ]) {
       const c = capture();
       expect(await main(argv, c.io), argv.join(' ')).toBe(1);
@@ -214,5 +215,53 @@ describe('agent guard', () => {
     const c = capture();
     expect(await main(['version'], c.io)).toBe(0);
     expect(c.out[0]).toMatch(/\d/);
+  });
+
+  it('isDestructive treats bare "tidy" as human-only but "tidy --dry-run" as agent-available', () => {
+    expect(isDestructive(parseArgs(['tidy']))).toBe(true);
+    expect(isDestructive(parseArgs(['tidy', '--project', 'x']))).toBe(true);
+    expect(isDestructive(parseArgs(['tidy', '--dry-run']))).toBe(false);
+    expect(isDestructive(parseArgs(['tidy', '--dry-run', '--json']))).toBe(false);
+  });
+
+  it('"tidy --dry-run" is refused nowhere: it runs even inside an agent session', async () => {
+    const policyFile = process.env.BERTH_POLICY as string;
+    writeFileSync(policyFile, fixturePolicy(tempDir()).text);
+    const c = capture();
+    expect(await main(['tidy', '--dry-run', '--json'], c.io)).toBe(0);
+    expect(JSON.parse(c.out.join(''))).toMatchObject({ dryRun: true });
+  });
+
+  it('the human-only refusal explains why, and names the tidy apply path only where tidy is a real alternative', async () => {
+    const tidy = capture();
+    expect(await main(['tidy'], tidy.io)).toBe(1);
+    expect(tidy.err.join(' ')).toMatch(/human-only command/);
+    expect(tidy.err.join(' ')).toMatch(/without --dry-run releases leases/);
+    expect(tidy.err.join(' ')).toMatch(/berth tidy --project <name>/);
+
+    const adopt = capture();
+    expect(await main(['adopt', '1234', '--owner', 'human'], adopt.io)).toBe(1);
+    expect(adopt.err.join(' ')).toMatch(/human-only command/);
+    expect(adopt.err.join(' ')).toMatch(/attributes a port to a person/);
+    expect(adopt.err.join(' ')).toMatch(/berth tidy --project <name>/);
+
+    const release = capture();
+    expect(await main(['release', '--port', '1234', '--force'], release.io)).toBe(1);
+    expect(release.err.join(' ')).toMatch(/human-only command/);
+    expect(release.err.join(' ')).toMatch(/berth tidy --project <name>/);
+
+    const releaseAll = capture();
+    expect(await main(['release', '--all', '--force'], releaseAll.io)).toBe(1);
+    expect(releaseAll.err.join(' ')).toMatch(/human-only command/);
+    expect(releaseAll.err.join(' ')).toMatch(/berth tidy --project <name>/);
+
+    // free, hooks install, worktrees prune and init --force are refused for reasons tidy cannot
+    // fix (it never touches a live process, a hook, a worktree slot or the policy), so the
+    // refusal must not point at it.
+    const free = capture();
+    expect(await main(['free', '1234'], free.io)).toBe(1);
+    expect(free.err.join(' ')).toMatch(/human-only command/);
+    expect(free.err.join(' ')).toMatch(/sends SIGTERM to a live process/);
+    expect(free.err.join(' ')).not.toMatch(/berth tidy/);
   });
 });
