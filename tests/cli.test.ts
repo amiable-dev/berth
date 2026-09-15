@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseArgs, UsageError } from '../src/args.js';
 import { envLines, envName, rolePorts } from '../src/commands/allocate.js';
-import { aliasName, buildLaunchConfigs } from '../src/commands/edges.js';
 import { isBerthHook, mergeHooks } from '../src/commands/hooks.js';
 import { extractPorts, updateDeclared } from '../src/commands/scan.js';
 import { composeServicesFromText, inferRole, renderOverride } from '../src/compose.js';
@@ -131,7 +130,8 @@ describe('hooks', () => {
   });
 });
 
-describe('env, launch.json and names', () => {
+// launch.json and alias-naming tests live in edges.test.ts, mirroring src/commands/edges.ts.
+describe('env', () => {
   const { policy, paths } = fixturePolicy(tempDir());
   it('produces role ports and exports', () => {
     const ports = rolePorts(policy, proj(policy, 'alpha'), 1);
@@ -147,21 +147,5 @@ describe('env, launch.json and names', () => {
     expect(lines).toContain('export DB_PORT=13002');
     expect(lines).toContain('export BERTH_BLOCK=13000-13099');
     expect(lines).toContain('export BERTH_SHARED_OBSERVABILITY_GRAFANA=3000');
-  });
-  it('builds launch.json entries from package scripts', () => {
-    const cfg = buildLaunchConfigs(
-      policy,
-      'alpha',
-      0,
-      { dev: 'vite', 'dev:api': 'node api' },
-      paths.alpha,
-    );
-    expect(cfg.map((c) => c.port)).toEqual([13000, 13001]);
-    expect(cfg[0]?.env?.PORT).toBe('13000');
-  });
-  it('names aliases per project, role and worktree', () => {
-    expect(aliasName('chancery', 'web')).toBe('chancery');
-    expect(aliasName('chancery', 'api')).toBe('chancery-api');
-    expect(aliasName('chancery', 'web', 'feat/x')).toBe('feat-x.chancery');
   });
 });
