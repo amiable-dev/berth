@@ -71,10 +71,10 @@ describe('buildTidyPlan', () => {
   });
 
   it('lists unmanaged ports as a suggestion only, never as something to release', () => {
+    // no cwd: the holder cannot be attributed to alpha by evidence, so it stays unmanaged
+    // (an attributed holder inside its own block's project is `ok`, not unmanaged).
     const t = truth({
-      listeners: [
-        { port: 13006, addr: '*:13006', pid: 2, cmd: 'python', cwd: paths.alpha, source: 'lsof' },
-      ],
+      listeners: [{ port: 13006, addr: '*:13006', pid: 2, cmd: 'python', source: 'lsof' }],
     });
     const r = report([], t);
     const plan = buildTidyPlan(r);
@@ -89,8 +89,9 @@ describe('buildTidyPlan', () => {
     const betaStale = lease(14001, { project: 'beta', cwd: paths.beta });
     const t = truth({
       listeners: [
-        { port: 13006, addr: '*:13006', pid: 2, cmd: 'python', cwd: paths.alpha, source: 'lsof' },
-        { port: 14006, addr: '*:14006', pid: 3, cmd: 'python', cwd: paths.beta, source: 'lsof' },
+        // unattributed (no cwd): both stay unmanaged rather than becoming ok
+        { port: 13006, addr: '*:13006', pid: 2, cmd: 'python', source: 'lsof' },
+        { port: 14006, addr: '*:14006', pid: 3, cmd: 'python', source: 'lsof' },
         { port: 40001, addr: '*:40001', pid: 4, cmd: 'bun', source: 'lsof' }, // unattributed: no project
       ],
     });
@@ -356,10 +357,9 @@ describe("check's attention summary points at tidy", () => {
   });
 
   it('does not suggest tidy for unmanaged-only attention (tidy cannot act on it)', () => {
+    // no cwd: an attributed holder inside its own block's project is `ok`, not unmanaged
     const t = truth({
-      listeners: [
-        { port: 13006, addr: '*:13006', pid: 2, cmd: 'python', cwd: paths.alpha, source: 'lsof' },
-      ],
+      listeners: [{ port: 13006, addr: '*:13006', pid: 2, cmd: 'python', source: 'lsof' }],
     });
     const r = reconcile({ policy, leases: [], sessions: [], truth: t, version: 'test', now: NOW });
     expect(r.ports.find((p) => p.port === 13006)?.state).toBe('unmanaged');
