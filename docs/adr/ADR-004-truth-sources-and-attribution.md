@@ -111,3 +111,23 @@ berth chose not to attribute a holder it could see plainly. The
 container-without-compose-labels check this needs is exported from
 `src/truth.ts` for reuse (`berth env --compose-override`'s hand-run-container
 warning, #22, needs the same test).
+
+## Amendment 2026-09-15 (#22)
+
+`berth who` and `berth env --compose-override` may run `docker inspect` for
+one container already named in the snapshot, to read its image, mounts, env
+and whether it carries compose labels — the volume names and hand-run
+recreate command these commands print. This is a supplemental read of the
+existing `docker` source (#3), not a fifth truth source: it never runs
+during `snapshot()` or `reconcile()`, so it cannot change a port's state or
+attribution, only add detail to an already-attributed container holder.
+
+Because it stays out of the cached snapshot path, the dashboard's five-second
+poll and the SessionStart hook's 180 ms budget are unaffected; it runs only
+on the explicit request a `who` or `--compose-override` call makes for one
+container, never on every listener.
+
+The recreate command `--compose-override` prints from this read is a
+starting point, not a guaranteed-faithful reconstruction: it carries only
+`-p`, `-v` and the image, since berth never captured the original
+container's network, extra environment or restart policy.
