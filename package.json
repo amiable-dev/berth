@@ -1,6 +1,6 @@
 {
   "name": "@amiable-dev/berth",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Advisory port registry, reconciler and dashboard for concurrent agent sessions on one machine",
   "license": "MIT",
   "type": "module",

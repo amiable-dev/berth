@@ -1,6 +1,6 @@
 {
   "name": "berth",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Advisory port registry for concurrent agent sessions: SessionStart context with this checkout's ports, an MCP server, and skills for day-to-day port use and registering a repo.",
   "author": {
     "name": "Amiable Dev",

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-15
+
+**Onboarding release.** What the first real registration taught: a project's own services need no adoption when the evidence already attributes them, a shell hook that follows `cd`, a warning before a Compose override that cannot apply, `berth tidy` for the leftovers, and ADR-009 (proposed) for moving repositories off hardcoded ports.
+
 ### Added
 
 - ADR-009 (proposed, council-reviewed): how a registered repository stops hardcoding ports. Environment first, the project's own W0 port as the default, strict bind; a `berth-migrate` skill with one recipe per tool (#17); three scanner zones so a migrated default is never re-declared, and `berth project declared --prune` as a rail-guarded, audited exception to additive-only policy edits (#16).
@@ -126,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/amiable-dev/berth/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/amiable-dev/berth/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/amiable-dev/berth/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/amiable-dev/berth/compare/v0.1.2...v0.1.3
