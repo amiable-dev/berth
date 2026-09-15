@@ -315,6 +315,142 @@ exit 0
     const invocations = readFileSync(countFile, 'utf8').split('\n').filter(Boolean).length;
     expect(invocations).toBe(2); // entering once, leaving once — never for the sub1->sub2 move
   }, 20000);
+
+  it('moving straight from a registered project into an unregistered git repo unsets the old project vars', async () => {
+    const base = tempDir('berth-zsh-root2root-');
+    const projectA = path.join(base, 'alpha');
+    const subA = path.join(projectA, 'sub');
+    const repoB = path.join(base, 'unregistered');
+    const subB = path.join(repoB, 'sub');
+    mkdirSync(path.join(projectA, '.git'), { recursive: true });
+    mkdirSync(subA, { recursive: true });
+    mkdirSync(path.join(repoB, '.git'), { recursive: true });
+    mkdirSync(subB, { recursive: true });
+
+    const binDir = path.join(base, 'bin');
+    mkdirSync(binDir, { recursive: true });
+    // A shim faithful enough to show the fix: for the registered project A it answers both
+    // --shell and --shell --unset (including the shared export, same as real berth would);
+    // for any other git root (B, unregistered) it answers only the quiet shared export.
+    const shim = `#!/usr/bin/env bash
+if [[ "$1" == "env" ]]; then
+  shift
+  unset_mode=0
+  cwd=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --unset) unset_mode=1 ;;
+      --cwd) cwd="$2"; shift ;;
+    esac
+    shift
+  done
+  if [[ "$cwd" == ${JSON.stringify(projectA)}* ]]; then
+    if [[ "$unset_mode" == "1" ]]; then
+      echo "unset PORT"
+      echo "unset BERTH_PROJECT"
+      echo "unset BERTH_SHARED_OBSERVABILITY_GRAFANA"
+    else
+      echo "export PORT=13100"
+      echo "export BERTH_PROJECT=alpha"
+      echo "export BERTH_SHARED_OBSERVABILITY_GRAFANA=3000"
+    fi
+  elif [[ "$unset_mode" != "1" ]]; then
+    echo "export BERTH_SHARED_OBSERVABILITY_GRAFANA=3000"
+  fi
+fi
+exit 0
+`;
+    writeFileSync(path.join(binDir, 'berth'), shim, { mode: 0o755 });
+
+    const initC = capture();
+    await cmdShellInit(parseArgs(['shell-init', 'zsh']), initC.io);
+    const snippetFile = path.join(base, 'init.zsh');
+    writeFileSync(snippetFile, initC.out.join('\n'));
+    const driverFile = path.join(base, 'driver.zsh');
+    writeFileSync(
+      driverFile,
+      [
+        'source "$1"',
+        'cd "$2"',
+        'cd "$3"',
+        'print "${PORT-}:${BERTH_PROJECT-}:${BERTH_SHARED_OBSERVABILITY_GRAFANA-}"',
+      ].join('\n'),
+    );
+
+    const stdout = execFileSync('zsh', ['-f', driverFile, snippetFile, subA, subB], {
+      cwd: base,
+      env: { PATH: `${binDir}:/bin:/usr/bin` },
+      encoding: 'utf8',
+    });
+    // A's project-specific vars are gone; the shared export (re-exported on the way into the
+    // unregistered repo) is still there.
+    expect(stdout.trim()).toBe('::3000');
+  }, 20000);
+
+  it('moving straight from one registered project into another exports the new project — not the old one', async () => {
+    const base = tempDir('berth-zsh-project2project-');
+    const projectA = path.join(base, 'alpha');
+    const subA = path.join(projectA, 'sub');
+    const projectC = path.join(base, 'charlie');
+    const subC = path.join(projectC, 'sub');
+    mkdirSync(path.join(projectA, '.git'), { recursive: true });
+    mkdirSync(subA, { recursive: true });
+    mkdirSync(path.join(projectC, '.git'), { recursive: true });
+    mkdirSync(subC, { recursive: true });
+
+    const binDir = path.join(base, 'bin');
+    mkdirSync(binDir, { recursive: true });
+    const shim = `#!/usr/bin/env bash
+if [[ "$1" == "env" ]]; then
+  shift
+  unset_mode=0
+  cwd=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --unset) unset_mode=1 ;;
+      --cwd) cwd="$2"; shift ;;
+    esac
+    shift
+  done
+  if [[ "$cwd" == ${JSON.stringify(projectA)}* ]]; then
+    if [[ "$unset_mode" == "1" ]]; then
+      echo "unset PORT"
+      echo "unset BERTH_PROJECT"
+    else
+      echo "export PORT=13100"
+      echo "export BERTH_PROJECT=alpha"
+    fi
+  elif [[ "$cwd" == ${JSON.stringify(projectC)}* ]]; then
+    if [[ "$unset_mode" == "1" ]]; then
+      echo "unset PORT"
+      echo "unset BERTH_PROJECT"
+    else
+      echo "export PORT=14100"
+      echo "export BERTH_PROJECT=charlie"
+    fi
+  fi
+fi
+exit 0
+`;
+    writeFileSync(path.join(binDir, 'berth'), shim, { mode: 0o755 });
+
+    const initC = capture();
+    await cmdShellInit(parseArgs(['shell-init', 'zsh']), initC.io);
+    const snippetFile = path.join(base, 'init.zsh');
+    writeFileSync(snippetFile, initC.out.join('\n'));
+    const driverFile = path.join(base, 'driver.zsh');
+    writeFileSync(
+      driverFile,
+      ['source "$1"', 'cd "$2"', 'cd "$3"', 'print "${PORT-}:${BERTH_PROJECT-}"'].join('\n'),
+    );
+
+    const stdout = execFileSync('zsh', ['-f', driverFile, snippetFile, subA, subC], {
+      cwd: base,
+      env: { PATH: `${binDir}:/bin:/usr/bin` },
+      encoding: 'utf8',
+    });
+    expect(stdout.trim()).toBe('14100:charlie'); // C's web port, not A's leftover 13100
+  }, 20000);
 });
 
 describe.skipIf(!hasShell('bash'))('bash shell-init snippet (requires bash on PATH)', () => {

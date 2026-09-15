@@ -7,9 +7,11 @@ const NOTE =
 /**
  * zsh: a chpwd_functions hook. Climbs from $PWD to the nearest ancestor with a `.git` (file or
  * directory — a worktree's .git is a file) using only the `:h` path modifier, never a subprocess.
- * When that root changes, runs `berth env --shell` (entering, or moving into an unregistered
- * directory, which is quiet) or `berth env --shell --unset` for the root just left (leaving).
- * Runs once at source time for the initial cwd.
+ * When that root changes: if there was a previous root, unsets its exports first
+ * (`berth env --shell --unset --cwd <old root>`); then, if the new root is non-empty, exports it
+ * (`berth env --shell --cwd <new root>`, quiet if it is not a registered project). This way a
+ * root-to-root move (one project straight into another, or into an unregistered git repo) never
+ * leaves the old project's variables behind. Runs once at source time for the initial cwd.
  */
 function zshSnippet(): string {
   return `# berth shell-init (zsh) — cd-aware port exports.
@@ -35,10 +37,11 @@ _berth_chpwd() {
   _berth_find_root
   local root="$_berth_root"
   [[ "$root" == "$_berth_last_root" ]] && return
+  if [[ -n "$_berth_last_root" ]]; then
+    eval "$(berth env --shell --unset --cwd "$_berth_last_root")"
+  fi
   if [[ -n "$root" ]]; then
     eval "$(berth env --shell --cwd "$root")"
-  elif [[ -n "$_berth_last_root" ]]; then
-    eval "$(berth env --shell --unset --cwd "$_berth_last_root")"
   fi
   _berth_last_root="$root"
 }
@@ -53,7 +56,8 @@ _berth_chpwd`;
 /**
  * bash: the same idea via PROMPT_COMMAND (bash has no chpwd hook). The ancestor walk uses only
  * `${dir%/*}` parameter expansion, never a subprocess; PROMPT_COMMAND runs before every prompt,
- * but berth is invoked only when the computed root actually changed.
+ * but berth is invoked only when the computed root actually changed — and, on a root-to-root
+ * move, the old root is unset before the new one is exported, so nothing is left behind.
  */
 function bashSnippet(): string {
   return `# berth shell-init (bash) — cd-aware port exports.
@@ -86,10 +90,11 @@ _berth_chpwd() {
   if [[ "$root" == "$_berth_last_root" ]]; then
     return
   fi
+  if [[ -n "$_berth_last_root" ]]; then
+    eval "$(berth env --shell --unset --cwd "$_berth_last_root")"
+  fi
   if [[ -n "$root" ]]; then
     eval "$(berth env --shell --cwd "$root")"
-  elif [[ -n "$_berth_last_root" ]]; then
-    eval "$(berth env --shell --unset --cwd "$_berth_last_root")"
   fi
   _berth_last_root="$root"
 }
@@ -105,6 +110,7 @@ _berth_chpwd`;
  * fish: a function on `--on-variable PWD` (fish has no `export`/`unset`/`eval "$(...)"` the way
  * POSIX shells do, so this parses berth's `--shell` export/unset lines itself and applies them
  * with `set -gx` / `set -e`). The ancestor walk uses `string replace -r`, never a subprocess.
+ * On a root-to-root move the old root is unset before the new one is exported, same as zsh/bash.
  */
 function fishSnippet(): string {
   return `# berth shell-init (fish) — cd-aware port exports.
@@ -151,13 +157,14 @@ function _berth_chpwd --on-variable PWD
     if test "$root" = "$_berth_last_root"
         return
     end
+    if test -n "$_berth_last_root"
+        for line in (berth env --shell --unset --cwd $_berth_last_root)
+            _berth_unset_line $line
+        end
+    end
     if test -n "$root"
         for line in (berth env --shell --cwd $root)
             _berth_export_line $line
-        end
-    else if test -n "$_berth_last_root"
-        for line in (berth env --shell --unset --cwd $_berth_last_root)
-            _berth_unset_line $line
         end
     end
     set -g _berth_last_root $root
