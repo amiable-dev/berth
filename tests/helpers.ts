@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { type Policy, type Project, parsePolicy } from '../src/policy.js';
@@ -70,4 +70,31 @@ export function proj(policy: Policy, name: string): Project {
   const p = policy.projects[name];
   if (!p) throw new Error(`no project ${name}`);
   return p;
+}
+
+/**
+ * Put fake executables on PATH for one test: `run()` always spawns real processes (there is no
+ * mocking in this suite), so a command like `docker-compose` is stubbed by writing a small shell
+ * script and prepending its directory to `process.env.PATH`. Call the returned `restore()` in
+ * `afterEach` to put the real PATH back. `inherit: false` uses only the stub directory, so a
+ * real binary elsewhere on PATH cannot leak into the test.
+ */
+export function stubPath(
+  scripts: Record<string, string>,
+  opts: { inherit?: boolean } = {},
+): { dir: string; restore: () => void } {
+  const dir = tempDir('berth-stub-bin-');
+  for (const [name, body] of Object.entries(scripts)) {
+    const file = path.join(dir, name);
+    writeFileSync(file, `#!/bin/sh\n${body}\n`);
+    chmodSync(file, 0o755);
+  }
+  const prevPath = process.env.PATH;
+  process.env.PATH = opts.inherit === false ? dir : `${dir}:${prevPath ?? ''}`;
+  return {
+    dir,
+    restore: () => {
+      process.env.PATH = prevPath;
+    },
+  };
 }

@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Policy, Project } from './policy.js';
+import { type ContainerInspect, handRunContainerAt } from './truth.js';
+import type { Container } from './types.js';
 import { run } from './util.js';
 
 export interface ComposeService {
@@ -166,6 +168,141 @@ export function inferRole(
   if (/docs|storybook/.test(hay)) return 'docs';
   if (/web|frontend|app|ui|site/.test(hay)) return 'web';
   return svc.name;
+}
+
+export interface ComposeFlavour {
+  kind: 'plugin' | 'standalone' | 'none';
+  /** The command to invoke: `docker compose` (two argv words) or `docker-compose`. */
+  command: string;
+  version?: string;
+}
+
+async function composeVersion(cmd: string, args: string[]): Promise<string | undefined> {
+  const r = await run(cmd, args, { timeoutMs: 4000 });
+  if (r.missing || r.code !== 0) return undefined;
+  const text = r.stdout.trim();
+  return text.length > 0 ? text : undefined;
+}
+
+/** Which Compose this machine has: the `docker compose` plugin, standalone `docker-compose`, or neither. */
+export async function detectComposeFlavour(): Promise<ComposeFlavour> {
+  const plugin = await composeVersion('docker', ['compose', 'version', '--short']);
+  if (plugin) return { kind: 'plugin', command: 'docker compose', version: plugin };
+  const standalone = await composeVersion('docker-compose', ['version', '--short']);
+  if (standalone) return { kind: 'standalone', command: 'docker-compose', version: standalone };
+  return { kind: 'none', command: 'docker compose' };
+}
+
+export interface OverrideMappingEntry {
+  service: string;
+  /** Host port the compose file currently declares for this container port (pre-override). */
+  currentHost: number;
+  /** Host port berth assigns; what the override file publishes instead. */
+  newHost: number;
+  containerPort: number;
+  role: string;
+}
+
+export interface OverrideWarningPort {
+  current: number;
+  new: number;
+  containerPort: number;
+}
+
+export interface OverrideWarning {
+  service: string;
+  container: string;
+  ports: OverrideWarningPort[];
+  message: string;
+  recreateCommand: string;
+  cautions: string[];
+}
+
+/** Images that keep state in memory unless a specific env var points them at a file. */
+const MEMORY_STATE_IMAGES: { pattern: RegExp; envVar: string; note: string }[] = [
+  {
+    pattern: /mailpit|mailhog/i,
+    envVar: 'MP_DATABASE',
+    note: 'keeps received mail in memory; recreating loses it unless MP_DATABASE is set',
+  },
+];
+
+function memoryStateCaution(image: string | undefined, env: string[]): string | undefined {
+  if (!image) return undefined;
+  const hit = MEMORY_STATE_IMAGES.find((m) => m.pattern.test(image));
+  if (!hit) return undefined;
+  if (env.some((e) => e.startsWith(`${hit.envVar}=`))) return undefined;
+  return `${image} ${hit.note}`;
+}
+
+/**
+ * For each mapped service whose currently-declared host port is already held by a container
+ * without compose labels, describe why the override will not move it and how to recreate it on
+ * the new port. A service with compose labels on its current holder gets no warning.
+ */
+export function buildOverrideWarnings(
+  mapping: OverrideMappingEntry[],
+  containers: Container[],
+  mounts: Map<string, ContainerInspect>,
+): OverrideWarning[] {
+  const byService = new Map<string, OverrideMappingEntry[]>();
+  for (const m of mapping) {
+    if (!byService.has(m.service)) byService.set(m.service, []);
+    byService.get(m.service)?.push(m);
+  }
+  const warnings: OverrideWarning[] = [];
+  for (const [service, entries] of byService) {
+    let container: Container | undefined;
+    const matched: OverrideMappingEntry[] = [];
+    for (const e of entries) {
+      const c = handRunContainerAt(containers, e.currentHost);
+      if (!c) continue;
+      container = c;
+      matched.push(e);
+    }
+    const primary = matched[0];
+    if (!container || !primary) continue;
+    const inspect = mounts.get(container.id);
+    const volFlags = (inspect?.mounts ?? []).map((m) => `-v ${m.name}:${m.destination}`);
+    const portFlags = matched.map((e) => `-p ${e.newHost}:${e.containerPort}`);
+    const image = inspect?.image ?? container.name;
+    const recreateCommand = [
+      `docker stop ${container.name}`,
+      `docker rm ${container.name}`,
+      `docker run -d --name ${container.name} ${portFlags.join(' ')}${volFlags.length ? ` ${volFlags.join(' ')}` : ''} ${image}`,
+    ].join(' && ');
+    const cautions: string[] = [];
+    for (const m of inspect?.mounts ?? []) {
+      if (m.anonymous)
+        cautions.push(
+          `volume ${m.name} is anonymous; recreating loses it unless you keep this exact name`,
+        );
+    }
+    const memCaution = memoryStateCaution(inspect?.image, inspect?.env ?? []);
+    if (memCaution) cautions.push(memCaution);
+    warnings.push({
+      service,
+      container: container.name,
+      ports: matched.map((e) => ({
+        current: e.currentHost,
+        new: e.newHost,
+        containerPort: e.containerPort,
+      })),
+      message: `${container.name} (${primary.currentHost}) was started with docker run; the override will not apply.`,
+      recreateCommand,
+      cautions,
+    });
+  }
+  return warnings;
+}
+
+/** Render one warning as the lines `cmdEnv` prints on stderr. */
+export function formatOverrideWarning(w: OverrideWarning): string[] {
+  const lines = [
+    `${w.message} Recreate it on ${w.ports.map((p) => p.new).join(', ')}: ${w.recreateCommand}`,
+  ];
+  for (const c of w.cautions) lines.push(`  caution: ${c}`);
+  return lines;
 }
 
 export function renderOverride(

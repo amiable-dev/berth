@@ -185,6 +185,76 @@ export async function dockerContainers(): Promise<{ available: boolean; containe
   return { available: true, containers };
 }
 
+export interface ContainerMount {
+  /** Volume name for a named or anonymous volume; host path for a bind mount. */
+  name: string;
+  destination: string;
+  type: string;
+  /** A docker-assigned volume whose name is its random 64-hex-character id, not a chosen name. */
+  anonymous: boolean;
+}
+
+export interface ContainerInspect {
+  mounts: ContainerMount[];
+  env: string[];
+  image?: string;
+}
+
+export function isAnonymousVolumeName(name: string): boolean {
+  return /^[0-9a-f]{64}$/i.test(name);
+}
+
+export function startedByDesc(c: Container): string {
+  return c.composeProject ? `compose ${c.composeProject}` : 'docker run';
+}
+
+export function handRunContainerAt(containers: Container[], port: number): Container | undefined {
+  return containers.find((c) => c.hostPorts.includes(port) && isUnlabelledContainer(c));
+}
+
+/** Evidence lines for a container holder: how it was started, and its mounted volumes when known. */
+export function containerHolderEvidence(c: Container, inspect?: ContainerInspect): string[] {
+  const lines = [`started by: ${startedByDesc(c)}`];
+  if (inspect && inspect.mounts.length > 0) {
+    lines.push(`volumes: ${inspect.mounts.map((m) => m.name).join(', ')}`);
+  }
+  return lines;
+}
+
+/**
+ * `docker inspect` for one container: its mounts (with anonymous-volume detection), env and
+ * image. Not part of `snapshot()` — every container would cost a call on every poll — so call
+ * this only for the specific container a warning or `who` needs to explain.
+ */
+export async function inspectContainer(containerId: string): Promise<ContainerInspect | undefined> {
+  const r = await run('docker', ['inspect', containerId], { timeoutMs: 6000 });
+  if (r.missing || r.code !== 0) return undefined;
+  try {
+    const arr = JSON.parse(r.stdout) as {
+      Mounts?: { Type: string; Name?: string; Source: string; Destination: string }[];
+      Config?: { Env?: string[]; Image?: string };
+    }[];
+    const d = arr[0];
+    if (!d) return undefined;
+    const mounts: ContainerMount[] = (d.Mounts ?? []).map((m) => {
+      const name = m.Type === 'volume' ? (m.Name ?? m.Source) : m.Source;
+      return {
+        name,
+        destination: m.Destination,
+        type: m.Type,
+        anonymous: m.Type === 'volume' && isAnonymousVolumeName(m.Name ?? ''),
+      };
+    });
+    return {
+      mounts,
+      env: d.Config?.Env ?? [],
+      ...(d.Config?.Image ? { image: d.Config.Image } : {}),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export interface SnapshotOptions {
   /** Serve a cached snapshot if it is at most this old. */
   maxAgeMs?: number;

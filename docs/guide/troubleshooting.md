@@ -14,6 +14,10 @@ That was `berth env --shell` outside a registered project: it exited 1 with the 
 
 Colima and Docker Desktop publish container ports through one proxy process; without container metadata every port would be attributed to whichever repository ran `colima start`. berth reads `docker ps` compose labels to attribute containers to their repositories. Containers started with plain `docker run` have no such label: they are reported by container name, and a lease (`berth adopt` or `berth claim` before starting them) settles ownership. If `docker` is not reachable, `check` says so and attributes by process only.
 
+## The override I wrote doesn't seem to apply
+
+`berth env --compose-override` only affects containers Compose itself manages. If `berth who <port>` on the service's currently-declared port shows `started by: docker run`, Compose does not recognise that container at all: `docker compose up` brings up a second, empty container on the new port while the real one, and its data, sit untouched on the old one. The override command detects this and prints the recreate command instead (stop, remove, `docker run` again on the new port, with its volumes) with any data-loss caution; review it, then run it yourself — berth never runs it for you.
+
 ## A port shows `conflict` but it is mine
 
 `conflict` means the live holder could not be matched to the lease's owner. That happens when the server was started with a scrubbed environment (no `CLAUDE_CODE_SESSION_ID`) from a different working directory than the lease. `berth who <port>` shows the evidence; `berth release --port <port>` then `berth claim` from the right session and directory clears it.

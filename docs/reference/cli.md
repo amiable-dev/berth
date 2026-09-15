@@ -20,7 +20,7 @@ Registered projects with number, block, path, declared ports and extras.
 
 ### `berth doctor [--json]`
 
-Environment checks. Exit 1 if a hard requirement fails (Node version, policy parse, state directory).
+Environment checks, including the Docker Compose flavour available (`docker compose` plugin, standalone `docker-compose`, or none) and its version. Exit 1 if a hard requirement fails (Node version, policy parse, state directory).
 
 ## Reading
 
@@ -34,11 +34,11 @@ Ports grouped Project → Worktree → Role, then shared services, then legacy a
 
 ### `berth who <port> [--json]`
 
-One port: decoded number, lease, owner, live holder, URL, evidence lines, advisory.
+One port: decoded number, lease, owner, live holder, URL, evidence lines, advisory. For a container holder, the evidence includes how it was started (`compose <project>` or `docker run`) and its mounted volume names.
 
 ### `berth env [--shell | --dotenv | --compose-override | --json] [--unset] [--strict] [--worktree N] [--cwd DIR] [--project X]`
 
-This checkout's ports. `--shell` (default) prints `export` lines; `--dotenv` prints `KEY=value`; `--compose-override` writes an `!override` Compose file under `~/.local/state/berth/overrides/` and prints the `COMPOSE_FILE` export. Assigns a worktree slot the first time it runs in a new worktree.
+This checkout's ports. `--shell` (default) prints `export` lines; `--dotenv` prints `KEY=value`; `--compose-override` writes an `!override` Compose file under `~/.local/state/berth/overrides/` and prints the `COMPOSE_FILE` export and the compose command to run next (`--json` adds `override`, `composeCommand` and `mapping`). When a mapped service's currently-declared port is already held by a container without compose labels (started with `docker run`), the override cannot move it: `--compose-override` prints a warning per service instead — on stderr, and as a `warnings` array with `--json` — naming the recreate command, its volumes and any data-loss caution (an anonymous volume, or an image that keeps state only in memory unless configured).
 
 Outside a registered project, the default `--shell` format is quiet: it exits 0, prints only the machine-wide `BERTH_SHARED_*` exports and a comment naming the fix (`berth project add .`), and writes nothing to stderr — the shape a shell rc file can `eval` on every prompt without noise. `--strict` restores the old behaviour (exit 1, a message on stderr, nothing on stdout). `--dotenv`, `--compose-override` and `--json` always fail loudly outside a project: they are explicit requests with no context to answer them. `--unset` prints `unset NAME` for every variable `--shell` would export in the same context (including the shared ones) and nothing else, for a shell hook to clear them when leaving a project.
 
