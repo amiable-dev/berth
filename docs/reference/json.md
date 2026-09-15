@@ -46,7 +46,7 @@ interface SessionRecord {
 }
 ```
 
-Other commands: `berth ls --json` is `ports[]`; `berth who N --json` is one `PortRecord`; `berth env --json` is `{ project, P, W, worktree, block, ports: [{ role, R, port, env }] }`; `berth project add --json` is the registered entry with `created` and `block`.
+Other commands: `berth ls --json` is `ports[]`; `berth who N --json` is one `PortRecord`; `berth env --json` is `{ project, P, W, worktree, block, ports: [{ role, R, port, env }] }`; `berth env --compose-override --json` is `{ project, file, override, composeFile, composeCommand, mapping: [{ service, currentHost, newHost, containerPort, role }], warnings: [{ service, container, ports: [{ current, new, containerPort }], message, recreateCommand, cautions: string[] }] }` — `warnings` is empty when every mapped service's current holder is unbound or carries compose labels; `berth project add --json` is the registered entry with `created` and `block`.
 
 ## MCP tools
 

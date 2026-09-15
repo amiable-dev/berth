@@ -2,11 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { flagBool, flagString, type ParsedArgs } from '../args.js';
+import { detectComposeFlavour } from '../compose.js';
 import { readSessions, worktreeSlots } from '../ledger.js';
 import { policyPath, stateDir } from '../paths.js';
 import { lintPolicy, loadPolicy, type Policy, policyExists } from '../policy.js';
 import { ownerDesc } from '../reconcile.js';
 import { buildReport } from '../report.js';
+import { containerHolderEvidence, inspectContainer, snapshot } from '../truth.js';
 import type { CheckReport, PortRecord, State } from '../types.js';
 import {
   colourState,
@@ -165,6 +167,14 @@ export async function cmdWho(args: ParsedArgs, io: IO): Promise<number> {
   }
   const report = await buildReport();
   const rec = report.ports.find((p) => p.port === port);
+  if (rec?.live?.container) {
+    const truth = await snapshot({ maxAgeMs: 1000 });
+    const c = truth.containers.find((x) => x.name === rec.live?.container);
+    if (c) {
+      const inspect = await inspectContainer(c.id);
+      rec.evidence.push(...containerHolderEvidence(c, inspect));
+    }
+  }
   if (flagBool(args.flags, 'json')) {
     io.out(JSON.stringify(rec ?? { port, state: null, note: 'nothing known' }, null, 2));
     return 0;
@@ -303,6 +313,18 @@ export async function doctorChecks(): Promise<DoctorCheck[]> {
       : docker.code === 0
         ? `server ${docker.stdout.trim()}`
         : 'installed but not reachable',
+  });
+  const compose = await detectComposeFlavour();
+  checks.push({
+    name: 'compose',
+    ok: true,
+    warn: compose.kind === 'none',
+    detail:
+      compose.kind === 'plugin'
+        ? `docker compose plugin ${compose.version}`
+        : compose.kind === 'standalone'
+          ? `standalone docker-compose ${compose.version}`
+          : 'no docker compose plugin or docker-compose on PATH',
   });
   checks.push({
     name: 'colima',

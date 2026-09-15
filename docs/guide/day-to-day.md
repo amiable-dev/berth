@@ -57,10 +57,21 @@ A Compose file that hardcodes host ports gets an override file:
 
 ```bash
 eval "$(berth env --compose-override)"
-docker compose up
+docker compose up   # or docker-compose up — berth doctor names the one this machine has
 ```
 
-`berth env --compose-override` reads the project's Compose services (through `docker compose config` when available, a parser otherwise), maps each published port to a role or an extras slot, writes an override file with the `!override` tag under `~/.local/state/berth/overrides/`, and prints the `COMPOSE_FILE` export that makes Compose apply it. The repo is untouched. For repositories you own, `${DB_PORT:-5432}` substitution in the Compose file is the better long-term shape; both work.
+`berth env --compose-override` reads the project's Compose services (through `docker compose config` when available, a parser otherwise), maps each published port to a role or an extras slot, writes an override file with the `!override` tag under `~/.local/state/berth/overrides/`, and prints the `COMPOSE_FILE` export that makes Compose apply it, along with a `# then: …` line naming the Compose command it detected. The repo is untouched. For repositories you own, `${DB_PORT:-5432}` substitution in the Compose file is the better long-term shape; both work.
+
+### Containers started by hand
+
+The override only moves containers Compose itself manages. If a service's currently-declared port is already held by a container `docker ps` shows with no `com.docker.compose.*` labels — started by a bare `docker run` — the override cannot touch it: `docker compose up` would bring up a second, empty container on the new port while the real one, and its data, sit untouched on the old one. `berth env --compose-override` detects this and prints a warning per service, on stderr and as a `warnings` array with `--json`, naming the recreate command:
+
+```
+penguin-platform-db (5433) was started with docker run; the override will not apply. Recreate it on 12002: docker stop penguin-platform-db && docker rm penguin-platform-db && docker run -d --name penguin-platform-db -p 12002:5432 -v a1b2…:/var/lib/postgresql/data postgres:16
+  caution: volume a1b2… is anonymous; recreating loses it unless you keep this exact name
+```
+
+Review the command before running it: it carries over the volumes `docker inspect` reports, but not flags berth cannot see (networks, extra env). A caution line calls out an anonymous volume or an image that keeps state only in memory unless configured (mailpit without `MP_DATABASE`). `berth who <port>` shows the same `started by: docker run` line and the volume names under "how we know" for any container holder, Compose-managed or not.
 
 ## Who has that port?
 

@@ -1,6 +1,15 @@
 import path from 'node:path';
 import { flagBool, flagString, type ParsedArgs } from '../args.js';
-import { composeServices, findComposeFile, inferRole, renderOverride } from '../compose.js';
+import {
+  buildOverrideWarnings,
+  composeServices,
+  detectComposeFlavour,
+  findComposeFile,
+  formatOverrideWarning,
+  inferRole,
+  type OverrideMappingEntry,
+  renderOverride,
+} from '../compose.js';
 import { type ResolvedContext, resolveContext } from '../context.js';
 import { addClaim, allLeases, compact, ownerKey, pidStartSync, releaseLease } from '../ledger.js';
 import { overridesDir } from '../paths.js';
@@ -20,7 +29,8 @@ import {
 import { ownerDesc } from '../reconcile.js';
 import { buildReport } from '../report.js';
 import { currentSession } from '../session.js';
-import type { Lease, LeaseKind, PortRecord } from '../types.js';
+import { type ContainerInspect, handRunContainerAt, inspectContainer, snapshot } from '../truth.js';
+import type { Container, Lease, LeaseKind, PortRecord } from '../types.js';
 import { atomicWriteSync, hostUser, nowIso, parsePort, pidAlive, sleep } from '../util.js';
 import type { IO } from './query.js';
 
@@ -170,6 +180,14 @@ export async function cmdEnv(args: ParsedArgs, io: IO): Promise<number> {
   }
   const project = ctx.project;
   const W = ctx.W ?? 0;
+
+  // Checked before --json (a latent ordering bug meant `--compose-override --json` used to
+  // silently return the plain ports JSON instead) and before the quiet-outside-project shortcut
+  // above already forces a loud failure for compose-override outside a project.
+  if (composeOverride) {
+    return cmdComposeOverride(policy, project, W, ctx, args, io);
+  }
+
   if (json) {
     io.out(
       JSON.stringify(
@@ -187,44 +205,102 @@ export async function cmdEnv(args: ParsedArgs, io: IO): Promise<number> {
     );
     return 0;
   }
-  if (composeOverride) {
-    const file = findComposeFile(ctx.worktreePath ?? project.path);
-    if (!file) {
-      io.err(`no compose file found in ${ctx.worktreePath ?? project.path}`);
-      return 1;
-    }
-    const services = await composeServices(file);
-    const used = new Set<number>();
-    const mapping: { service: string; host: number; container: number; role: string }[] = [];
-    let nextExtra = 10;
-    for (const svc of services) {
-      for (const p of svc.ports) {
-        let role = inferRole(policy, project, svc, p.container);
-        let R = roleNumber(policy, project, role);
-        if (R === undefined || used.has(R)) {
-          while (used.has(nextExtra) || Object.values(project.extras).includes(nextExtra))
-            nextExtra++;
-          R = nextExtra++;
-          role = `${role} (unpinned slot ${R}; pin it under [projects.${project.name}] extras)`;
-        }
-        used.add(R);
-        mapping.push({
-          service: svc.name,
-          host: portFor(policy, project.P, W, R),
-          container: p.container,
-          role,
-        });
-      }
-    }
-    const out = path.join(overridesDir(), `${project.name}${W ? `-W${W}` : ''}.yml`);
-    atomicWriteSync(out, renderOverride(mapping));
-    io.out(`# wrote ${out}`);
-    for (const m of mapping) io.out(`#   ${m.service}: ${m.host} -> ${m.container}  (${m.role})`);
-    io.out(`export COMPOSE_FILE=${shellQuote(`${file}${path.delimiter}${out}`)}`);
-    return 0;
-  }
   const format = unset ? 'unset' : dotenv ? 'dotenv' : 'shell';
   io.out(envLines(policy, ctx, format).join('\n'));
+  return 0;
+}
+
+async function cmdComposeOverride(
+  policy: Policy,
+  project: Project,
+  W: number,
+  ctx: ResolvedContext,
+  args: ParsedArgs,
+  io: IO,
+): Promise<number> {
+  const file = findComposeFile(ctx.worktreePath ?? project.path);
+  if (!file) {
+    io.err(`no compose file found in ${ctx.worktreePath ?? project.path}`);
+    return 1;
+  }
+  const services = await composeServices(file);
+  const used = new Set<number>();
+  const mapping: OverrideMappingEntry[] = [];
+  let nextExtra = 10;
+  for (const svc of services) {
+    for (const p of svc.ports) {
+      let role = inferRole(policy, project, svc, p.container);
+      let R = roleNumber(policy, project, role);
+      if (R === undefined || used.has(R)) {
+        while (used.has(nextExtra) || Object.values(project.extras).includes(nextExtra))
+          nextExtra++;
+        R = nextExtra++;
+        role = `${role} (unpinned slot ${R}; pin it under [projects.${project.name}] extras)`;
+      }
+      used.add(R);
+      mapping.push({
+        service: svc.name,
+        currentHost: p.host,
+        newHost: portFor(policy, project.P, W, R),
+        containerPort: p.container,
+        role,
+      });
+    }
+  }
+
+  // A service whose currently-declared port is already held by a container without compose
+  // labels cannot be moved by the override; docker inspect only for those specific containers.
+  const truth = await snapshot({ maxAgeMs: 1000 });
+  const needed = new Map<string, Container>();
+  for (const m of mapping) {
+    const c = handRunContainerAt(truth.containers, m.currentHost);
+    if (c) needed.set(c.id, c);
+  }
+  const mounts = new Map<string, ContainerInspect>();
+  for (const c of needed.values()) {
+    const inspect = await inspectContainer(c.id);
+    if (inspect) mounts.set(c.id, inspect);
+  }
+  const warnings = buildOverrideWarnings(mapping, truth.containers, mounts);
+  const flavour = await detectComposeFlavour();
+
+  const out = path.join(overridesDir(), `${project.name}${W ? `-W${W}` : ''}.yml`);
+  atomicWriteSync(
+    out,
+    renderOverride(
+      mapping.map((m) => ({
+        service: m.service,
+        host: m.newHost,
+        container: m.containerPort,
+        role: m.role,
+      })),
+    ),
+  );
+
+  if (flagBool(args.flags, 'json')) {
+    io.out(
+      JSON.stringify(
+        {
+          project: project.name,
+          file,
+          override: out,
+          composeFile: `${file}${path.delimiter}${out}`,
+          composeCommand: flavour.command,
+          mapping,
+          warnings,
+        },
+        null,
+        2,
+      ),
+    );
+  } else {
+    io.out(`# wrote ${out}`);
+    for (const m of mapping)
+      io.out(`#   ${m.service}: ${m.newHost} -> ${m.containerPort}  (${m.role})`);
+    io.out(`export COMPOSE_FILE=${shellQuote(`${file}${path.delimiter}${out}`)}`);
+    io.out(`# then: ${flavour.command} up`);
+  }
+  for (const w of warnings) for (const line of formatOverrideWarning(w)) io.err(line);
   return 0;
 }
 
