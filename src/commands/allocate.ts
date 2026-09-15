@@ -46,11 +46,21 @@ export function rolePorts(policy: Policy, project: Project, W: number): RolePort
   return out.sort((a, b) => a.R - b.R);
 }
 
-export function envLines(
-  policy: Policy,
-  ctx: ResolvedContext,
-  format: 'shell' | 'dotenv',
-): string[] {
+/** BERTH_SHARED_<STACK>_<SERVICE> pairs: the machine-wide exports available even outside a project. */
+export function sharedEnvPairs(policy: Policy): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (const [name, svc] of Object.entries(policy.shared)) {
+    for (const [service, port] of Object.entries(svc.ports)) {
+      pairs.push([
+        `BERTH_SHARED_${name.toUpperCase()}_${service.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`,
+        String(port),
+      ]);
+    }
+  }
+  return pairs;
+}
+
+function projectEnvPairs(policy: Policy, ctx: ResolvedContext): [string, string][] {
   const project = ctx.project as Project;
   const W = ctx.W ?? 0;
   const [lo, hi] = worktreeRange(policy, project.P, W);
@@ -65,15 +75,26 @@ export function envLines(
     ['BERTH_W', String(W)],
     ['BERTH_BLOCK', `${lo}-${hi}`],
   );
-  for (const [name, svc] of Object.entries(policy.shared)) {
-    for (const [service, port] of Object.entries(svc.ports)) {
-      pairs.push([
-        `BERTH_SHARED_${name.toUpperCase()}_${service.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`,
-        String(port),
-      ]);
-    }
-  }
+  pairs.push(...sharedEnvPairs(policy));
+  return pairs;
+}
+
+function formatPairs(pairs: [string, string][], format: 'shell' | 'dotenv' | 'unset'): string[] {
+  if (format === 'unset') return pairs.map(([k]) => `unset ${k}`);
   return pairs.map(([k, v]) => (format === 'shell' ? `export ${k}=${shellQuote(v)}` : `${k}=${v}`));
+}
+
+/**
+ * The exports for this context: a project's role ports, BERTH_* metadata and the shared services,
+ * or — when `ctx.project` is unset (outside a registered project) — the shared services alone.
+ * `format: 'unset'` emits `unset NAME` for each of the same variable names, nothing else.
+ */
+export function envLines(
+  policy: Policy,
+  ctx: ResolvedContext,
+  format: 'shell' | 'dotenv' | 'unset',
+): string[] {
+  return formatPairs(ctx.project ? projectEnvPairs(policy, ctx) : sharedEnvPairs(policy), format);
 }
 
 function shellQuote(v: string): string {
@@ -84,10 +105,10 @@ async function contextOrFail(
   policy: Policy,
   args: ParsedArgs,
   io: IO,
-  assign = true,
+  opts: { assign?: boolean; quietNoProject?: boolean } = {},
 ): Promise<ResolvedContext | undefined> {
   const cwd = flagString(args.flags, 'cwd') ?? process.cwd();
-  const ctx = await resolveContext(policy, cwd, { assign });
+  const ctx = await resolveContext(policy, cwd, { assign: opts.assign ?? true });
   const wFlag = flagString(args.flags, 'worktree');
   if (wFlag !== undefined) {
     const W = Number(wFlag);
@@ -108,6 +129,10 @@ async function contextOrFail(
     if (ctx.W === null) ctx.W = 0;
   }
   if (!ctx.project) {
+    // Callers that are quiet outside a project (plain `env --shell`) get the bare context back
+    // (ctx.project stays undefined) and decide their own quiet output; everyone else gets today's
+    // loud failure.
+    if (opts.quietNoProject) return ctx;
     io.err(
       `${cwd} is not inside any project in policy.toml. Add it, pass --project <name>, or use \`berth claim --dynamic 1\`.`,
     );
@@ -124,11 +149,28 @@ async function contextOrFail(
 
 export async function cmdEnv(args: ParsedArgs, io: IO): Promise<number> {
   const policy = loadPolicy();
-  const ctx = await contextOrFail(policy, args, io);
-  if (!ctx?.project) return 1;
+  const json = flagBool(args.flags, 'json');
+  const dotenv = flagBool(args.flags, 'dotenv');
+  const composeOverride = flagBool(args.flags, 'compose-override');
+  const unset = flagBool(args.flags, 'unset');
+  const cwd = flagString(args.flags, 'cwd') ?? process.cwd();
+  // The plain `--shell` format (the default) is quiet outside a registered project: exit 0 with
+  // only the machine-wide BERTH_SHARED_* exports and a comment naming the fix, nothing on stderr.
+  // `--strict` restores today's loud failure; `--dotenv`, `--compose-override` and `--json` are
+  // explicit requests that keep failing loudly — there is no context to answer them with.
+  const quietNoProject = !flagBool(args.flags, 'strict') && !dotenv && !composeOverride && !json;
+  const ctx = await contextOrFail(policy, args, io, { quietNoProject });
+  if (ctx === undefined) return 1;
+  if (!ctx.project) {
+    const lines = envLines(policy, ctx, unset ? 'unset' : 'shell');
+    if (!unset)
+      lines.push(`# berth: ${cwd} is not inside a registered project (berth project add .)`);
+    if (lines.length) io.out(lines.join('\n'));
+    return 0;
+  }
   const project = ctx.project;
   const W = ctx.W ?? 0;
-  if (flagBool(args.flags, 'json')) {
+  if (json) {
     io.out(
       JSON.stringify(
         {
@@ -145,7 +187,7 @@ export async function cmdEnv(args: ParsedArgs, io: IO): Promise<number> {
     );
     return 0;
   }
-  if (flagBool(args.flags, 'compose-override')) {
+  if (composeOverride) {
     const file = findComposeFile(ctx.worktreePath ?? project.path);
     if (!file) {
       io.err(`no compose file found in ${ctx.worktreePath ?? project.path}`);
@@ -181,7 +223,7 @@ export async function cmdEnv(args: ParsedArgs, io: IO): Promise<number> {
     io.out(`export COMPOSE_FILE=${shellQuote(`${file}${path.delimiter}${out}`)}`);
     return 0;
   }
-  const format = flagBool(args.flags, 'dotenv') ? 'dotenv' : 'shell';
+  const format = unset ? 'unset' : dotenv ? 'dotenv' : 'shell';
   io.out(envLines(policy, ctx, format).join('\n'));
   return 0;
 }

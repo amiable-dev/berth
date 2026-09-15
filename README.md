@@ -41,6 +41,7 @@ npm install -g @amiable-dev/berth      # Node 20 or newer, zero runtime dependen
 berth init                              # a starting policy in ~/.config/berth/policy.toml
 cd ~/projects/my-app && berth project add .   # next free project number, ports found in your configs
 berth check                             # what is listening, who holds it, what needs attention
+eval "$(berth shell-init zsh)"          # once, in ~/.zshrc (or bash, fish): cd-aware port exports
 ```
 
 `berth project add` is additive and idempotent: it appends one `[projects.<name>]` table, records the ports your repo already hardcodes as `declared`, and names Compose services that aren't one of the ten roles as `extras`. Project numbers are permanent from that moment; `berth project list` shows them. `berth doctor` checks lsof, Docker, the policy and the Claude Code wiring (plugin or manual hooks).
@@ -55,11 +56,13 @@ The manual route for Claude Code (`berth hooks install`, `claude mcp add --scope
 
 ## Day to day
 
-**Starting a session.** With the hooks installed (`berth hooks install`), every Claude Code session starts with its project's block in context and `PORT`, `API_PORT`, `DB_PORT` and the other role ports exported. In a plain shell:
+**Starting a session.** With the hooks installed (`berth hooks install`), every Claude Code session starts with its project's block in context and `PORT`, `API_PORT`, `DB_PORT` and the other role ports exported. In a plain shell, add a cd-aware hook once:
 
 ```bash
-eval "$(berth env --shell)"        # this checkout's ports as environment variables
+eval "$(berth shell-init zsh)"     # or bash, fish — put this in your rc file
 ```
+
+It follows you: entering a registered project's checkout exports its ports, leaving it unsets them, and a plain `cd` between two directories of the same project costs nothing (no `berth` process runs unless the project root actually changed). A one-off shell still works with the plain `eval "$(berth env --shell)"`, which this wraps.
 
 **Starting a server.** Use the exported port and strict mode, so a busy port fails loudly instead of silently sliding to the next number:
 
@@ -168,7 +171,8 @@ Any other agent or script uses the same CLI; `--json` is the boundary on every r
 ls [--project X] [--all] [--state S] [--json]   ports grouped by project → worktree → role
 who <port> [--json]                             lease, live holder, evidence, advisory
 check [--json] [--no-docker]                    reconcile ledger with reality; exit 0 always
-env [--shell|--dotenv|--compose-override|--json] [--worktree N] [--cwd DIR]
+env [--shell|--dotenv|--compose-override|--json] [--unset] [--strict] [--worktree N] [--cwd DIR]
+shell-init zsh|bash|fish                        prints a cd-aware ports snippet for your rc file
 claim --role R | --extra NAME | --dynamic N | --port P [--note T] [--force] [--json]
 release --port P | --all [--force] [--json]
 adopt <port> --owner human|session [--project X] [--role R] [--json]

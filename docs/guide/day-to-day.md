@@ -3,10 +3,16 @@
 ## Get this checkout's ports
 
 ```bash
+eval "$(berth shell-init zsh)"     # once, in ~/.zshrc (or bash, fish)
+```
+
+Installs a directory-change hook that runs `berth env --shell` whenever the project root under your cwd changes, and unsets everything again when you leave it — `cd` between two directories of the same project costs nothing, since no `berth` process runs unless the root actually changed. A one-off shell still works with the plain command it wraps:
+
+```bash
 eval "$(berth env --shell)"
 ```
 
-Exports `PORT` (the web role), one `<ROLE>_PORT` per canonical role and extra, `BERTH_PROJECT`, `BERTH_P`, `BERTH_W`, `BERTH_BLOCK`, and `BERTH_SHARED_<STACK>_<SERVICE>` for shared services. `berth env --dotenv` prints `KEY=value` lines for an `.env` file; `berth env --json` returns the same as data. In a Claude Code session all of this is already in the environment.
+Exports `PORT` (the web role), one `<ROLE>_PORT` per canonical role and extra, `BERTH_PROJECT`, `BERTH_P`, `BERTH_W`, `BERTH_BLOCK`, and `BERTH_SHARED_<STACK>_<SERVICE>` for shared services. Outside a registered project it quietly exports only the `BERTH_SHARED_*` variables and prints a comment naming the fix, rather than failing (`--strict` restores the old exit-1 behaviour); `--unset` prints `unset` lines for the same variable names instead. `berth env --dotenv` prints `KEY=value` lines for an `.env` file; `berth env --json` returns the same as data. In a Claude Code session all of this is already in the environment.
 
 ## Start a server on the right port
 

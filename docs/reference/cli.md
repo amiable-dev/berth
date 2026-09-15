@@ -36,9 +36,15 @@ Ports grouped Project → Worktree → Role, then shared services, then legacy a
 
 One port: decoded number, lease, owner, live holder, URL, evidence lines, advisory.
 
-### `berth env [--shell | --dotenv | --compose-override | --json] [--worktree N] [--cwd DIR] [--project X]`
+### `berth env [--shell | --dotenv | --compose-override | --json] [--unset] [--strict] [--worktree N] [--cwd DIR] [--project X]`
 
 This checkout's ports. `--shell` (default) prints `export` lines; `--dotenv` prints `KEY=value`; `--compose-override` writes an `!override` Compose file under `~/.local/state/berth/overrides/` and prints the `COMPOSE_FILE` export. Assigns a worktree slot the first time it runs in a new worktree.
+
+Outside a registered project, the default `--shell` format is quiet: it exits 0, prints only the machine-wide `BERTH_SHARED_*` exports and a comment naming the fix (`berth project add .`), and writes nothing to stderr — the shape a shell rc file can `eval` on every prompt without noise. `--strict` restores the old behaviour (exit 1, a message on stderr, nothing on stdout). `--dotenv`, `--compose-override` and `--json` always fail loudly outside a project: they are explicit requests with no context to answer them. `--unset` prints `unset NAME` for every variable `--shell` would export in the same context (including the shared ones) and nothing else, for a shell hook to clear them when leaving a project.
+
+### `berth shell-init zsh | bash | fish`
+
+Prints a snippet for your rc file: `eval "$(berth shell-init zsh)"` in `.zshrc`, `eval "$(berth shell-init bash)"` in `.bashrc`, or `berth shell-init fish | source` in `config.fish`. The snippet installs a directory-change hook (zsh `chpwd_functions`, bash `PROMPT_COMMAND`, fish `--on-variable PWD`) that finds the nearest ancestor with a `.git` using only shell string operations — never a subprocess — and, only when that root changes, runs `berth env --shell` (entering, or moving into an unregistered directory, which is quiet) or `berth env --shell --unset` for the root just left (leaving), evaluating the result. Moving between two directories of the same project costs nothing: no `berth` process runs unless the root changed. An unrecognised shell name exits 2 with a one-line message. A one-off shell still works with the plain `eval "$(berth env --shell)"`, which this wraps.
 
 ### `berth scan [--write] [--project X] [--json]`
 

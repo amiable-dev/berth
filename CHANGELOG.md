@@ -10,12 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - ADR-009 (proposed, council-reviewed): how a registered repository stops hardcoding ports. Environment first, the project's own W0 port as the default, strict bind; a `berth-migrate` skill with one recipe per tool (#17); three scanner zones so a migrated default is never re-declared, and `berth project declared --prune` as a rail-guarded, audited exception to additive-only policy edits (#16).
+- `berth shell-init zsh|bash|fish` prints a directory-change hook for your rc file: entering a registered project's checkout exports its ports, leaving it unsets them, and moving between two directories of the same project costs nothing (no `berth` process spawned unless the project root changed) (#21).
+- `berth env --shell --unset` prints `unset` lines for every variable `--shell` would export in the same context, including the shared ones, and nothing else — what `shell-init` evals when leaving a project (#21).
 
 ### Changed
 
 - The npm package's `homepage` is the documentation site (https://amiable-dev.github.io/berth/) instead of the README; npmjs.com and `npm docs` link there from the next release.
 - Reconciler: a live holder inside a project's own block that is already attributed by evidence (compose `working_dir` label or process cwd) is now `ok` with no lease required, instead of `unmanaged`. `PortRecord` gains `attribution: 'lease' | 'evidence'`; a holder with no attribution stays `unmanaged`, and a container started outside Compose gets advisory copy that says so instead of the generic adopt text (#19).
 - `berth launch-json --write` no longer writes a machine-specific `cwd` for the common case: entries omit `cwd` when it equals the repository root, and write it relative to the repository root when `--cwd` points elsewhere. After writing, `.claude/launch.json` is appended to `.git/info/exclude` (never `.gitignore`) unless it is already tracked or ignored, so it is never committed by accident; `--no-exclude` opts out (#23).
+- `berth env --shell` outside a registered project no longer fails: it exits 0, prints only the machine-wide `BERTH_SHARED_*` exports plus a comment naming the fix (`berth project add .`), and writes nothing to stderr, so a shell rc file can `eval` it on every prompt without noise. `--strict` restores the old exit-1 behaviour; `--dotenv`, `--compose-override` and `--json` are unchanged and still fail loudly (#21).
 
 ## [0.1.5] - 2026-09-14
 

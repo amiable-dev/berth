@@ -5,6 +5,7 @@ import { cmdContext, cmdHooks, cmdSessionEnd } from './commands/hooks.js';
 import { cmdInit, cmdProject } from './commands/project.js';
 import { cmdCheck, cmdDoctor, cmdLs, cmdWho, type IO } from './commands/query.js';
 import { cmdScan } from './commands/scan.js';
+import { cmdShellInit } from './commands/shell.js';
 import { addClaim, LockTimeoutError, releaseLease } from './ledger.js';
 import { serveStdio } from './mcp.js';
 import { auditLogPath } from './paths.js';
@@ -28,7 +29,8 @@ usage: berth <command> [options]
   ls [--project X] [--all] [--state S] [--json]   ports grouped by project → worktree → role
   who <port> [--json]                             lease, live holder, evidence, advisory
   check [--json] [--no-docker]                    reconcile ledger with reality; exit 0 always
-  env [--shell|--dotenv|--compose-override|--json] [--worktree N] [--cwd DIR]
+  env [--shell|--dotenv|--compose-override|--json] [--unset] [--strict] [--worktree N] [--cwd DIR]
+  shell-init zsh|bash|fish                        prints a cd-aware ports snippet for your rc file
   claim --role R | --extra NAME | --dynamic N | --port P [--note T] [--force] [--json]
   release --port P | --all [--force] [--json]
   adopt <port> --owner human|session [--project X] [--role R] [--json]
@@ -111,6 +113,7 @@ const COMMANDS: Record<string, (args: ParsedArgs, io: IO) => Promise<number>> = 
   who: cmdWho,
   check: cmdCheck,
   env: cmdEnv,
+  'shell-init': cmdShellInit,
   claim: cmdClaim,
   release: cmdRelease,
   adopt: cmdAdopt,

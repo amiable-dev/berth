@@ -6,6 +6,10 @@ Start with `berth doctor`: it checks Node, the policy, the state directory, `lso
 
 `berth env` only knows directories under a registered project path (or a git worktree of one). Register the repository: `berth project add .` from its root, or ask the agent to "register this repo in berth".
 
+## I used to see "... is not inside any project in policy.toml" on every new shell
+
+That was `berth env --shell` outside a registered project: it exited 1 with the message on stderr, which is what you saw on every terminal that opened at `$HOME` or any other unregistered directory. `berth env --shell` is quiet there now — exit 0, only the machine-wide `BERTH_SHARED_*` exports plus a comment naming the fix, nothing on stderr — and `berth shell-init zsh|bash|fish` gives you a cd-aware hook so the exports actually update as you move around, instead of being fixed at shell startup. Pass `--strict` to get the old loud failure back for a one-off check. If you still see the message, you are passing `--dotenv`, `--compose-override` or `--json`, which are explicit requests and keep failing loudly by design — or an explicit `--project <name>` names a project that does not exist.
+
 ## Every Docker port shows the same project
 
 Colima and Docker Desktop publish container ports through one proxy process; without container metadata every port would be attributed to whichever repository ran `colima start`. berth reads `docker ps` compose labels to attribute containers to their repositories. Containers started with plain `docker run` have no such label: they are reported by container name, and a lease (`berth adopt` or `berth claim` before starting them) settles ownership. If `docker` is not reachable, `check` says so and attributes by process only.
