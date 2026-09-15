@@ -80,9 +80,9 @@ The Claude Code hook entry points; they read the hook JSON on stdin and always e
 
 Manage the manual SessionStart/SessionEnd hooks in `~/.claude/settings.json` (human-only; the plugin makes this unnecessary). `print` shows the entries.
 
-### `berth launch-json [--write] [--cwd DIR]`
+### `berth launch-json [--write] [--cwd DIR] [--no-exclude]`
 
-`.claude/launch.json` entries for the desktop preview pane with the allocated ports, derived from `package.json` scripts; existing non-berth entries are kept.
+`.claude/launch.json` entries for the desktop preview pane with the allocated ports, derived from `package.json` scripts; existing non-berth entries are kept. Entries omit `cwd` when it equals the repository root — the desktop app already runs configurations from the project directory — and write it relative to the repository root when `--cwd` points elsewhere. After `--write`, if the file is neither tracked nor already ignored, it is appended to `.git/info/exclude` (never `.gitignore`, so it is never committed by accident); a second write does not duplicate the line. `--no-exclude` opts out; outside a git repository the step is skipped silently.
 
 ### `berth names list | sync [--all] [--dry-run] [--json]`
 

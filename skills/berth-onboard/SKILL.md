@@ -20,7 +20,7 @@ Goal: this checkout gets a permanent project number, its hardcoded ports are rec
 3. **Give the checkout its numbers.**
    - Shell: `eval "$(berth env --shell)"`; for a `.env`-driven app, `berth env --dotenv >> .env.local` (or wherever the project reads its env), never overwriting an existing file without asking.
    - Docker Compose with hardcoded host ports: `eval "$(berth env --compose-override)"` and show the human the mapping it printed (service → new host port).
-   - Claude Code desktop preview pane: `berth launch-json --write` creates or updates `.claude/launch.json` entries named `<project> web (berth W0)` and similar, keeping any entries that are not berth's.
+   - Claude Code desktop preview pane: `berth launch-json --write` creates or updates `.claude/launch.json` entries named `<project> web (berth W0)` and similar, keeping any entries that are not berth's. The file is excluded from git automatically (`.git/info/exclude`, never `.gitignore`) unless it is already tracked or ignored, so it is never committed by accident.
 4. **Point the code at the numbers, with the human's approval.** Where a config hardcodes a port, prefer reading the environment (`PORT`, `API_PORT`, `DB_PORT`, …) and turn on strict mode (`vite --strictPort`, `server.strictPort: true`). Propose the diff; apply it only when asked. Do not rewrite Compose files: the override covers them.
 5. **Verify.** `berth check` should show the project's ports as `ok` or `idle` and nothing under attention for this block. `berth ls --project <name>` shows the table. If the dashboard is running, `http://127.0.0.1:10000/?view=map` shows the new row.
 6. **Report** the project number, the block, the ports by role, and any legacy ports still hardcoded, in one short message.

@@ -40,7 +40,7 @@ usage: berth <command> [options]
   compact [--json]                                fold per-session claim files into the ledger
   context | session-end                           Claude Code hook entry points (read stdin JSON)
   hooks install|uninstall|print [--settings PATH] manage ~/.claude/settings.json hooks
-  launch-json [--write] [--cwd DIR]               .claude/launch.json for the desktop preview pane
+  launch-json [--write] [--cwd DIR] [--no-exclude] .claude/launch.json for the desktop preview pane
   names list|sync [--all] [--dry-run] [--json]    portless aliases for http leases
   worktrees list|remove|prune [--project X --w N] [--json]
   mcp                                             MCP server over stdio

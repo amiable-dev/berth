@@ -9,9 +9,10 @@ import {
   pruneWorktreeSlot,
   worktreeSlots,
 } from '../ledger.js';
-import { isHttpRole, loadPolicy, type Policy, projectByName } from '../policy.js';
-import { atomicWriteSync, run } from '../util.js';
+import { isHttpRole, loadPolicy, normalizeDir, type Policy, projectByName } from '../policy.js';
+import { appendFileSafe, atomicWriteSync, contractHome, run } from '../util.js';
 import { rolePorts } from './allocate.js';
+import { isGitRoot } from './project.js';
 import type { IO } from './query.js';
 
 export async function cmdCompact(args: ParsedArgs, io: IO): Promise<number> {
@@ -39,12 +40,18 @@ interface LaunchJson {
   [k: string]: unknown;
 }
 
+/**
+ * `cwd` is the launch config's `cwd` field, already resolved to a path relative to the
+ * repository root (or `undefined` when it equals the repository root: the desktop app already
+ * runs configurations from the project directory, so an explicit `cwd` would be redundant and
+ * machine-specific for the common case).
+ */
 export function buildLaunchConfigs(
   policy: Policy,
   projectName: string,
   W: number,
   pkgScripts: Record<string, string>,
-  dir: string,
+  cwd?: string,
 ): LaunchConfig[] {
   const project = projectByName(policy, projectName);
   if (!project) return [];
@@ -63,7 +70,7 @@ export function buildLaunchConfigs(
       runtimeArgs: ['run', devScript],
       port: web.port,
       env: { ...env, PORT: String(web.port) },
-      cwd: dir,
+      ...(cwd ? { cwd } : {}),
     });
   }
   const apiScript = pick(['dev:api', 'api', 'start:api']);
@@ -74,7 +81,7 @@ export function buildLaunchConfigs(
       runtimeArgs: ['run', apiScript],
       port: api.port,
       env: { ...env, PORT: String(api.port) },
-      cwd: dir,
+      ...(cwd ? { cwd } : {}),
     });
   }
   if (out.length === 0 && web) {
@@ -84,10 +91,51 @@ export function buildLaunchConfigs(
       runtimeArgs: ['run', 'dev'],
       port: web.port,
       env: { ...env, PORT: String(web.port) },
-      cwd: dir,
+      ...(cwd ? { cwd } : {}),
     });
   }
   return out;
+}
+
+/** The common `.git` dir (shared by all worktrees), via `git rev-parse`; `undefined` outside a
+ *  git repository or if `git` itself is unavailable. */
+async function gitCommonDir(dir: string): Promise<string | undefined> {
+  const r = await run(
+    'git',
+    ['-C', dir, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
+    { timeoutMs: 1500 },
+  );
+  return r.code === 0 ? r.stdout.trim() : undefined;
+}
+
+export type ExcludeAction = 'excluded' | 'already-excluded' | 'tracked' | 'ignored' | 'not-a-repo';
+
+/**
+ * After `launch-json --write`, keep `.claude/launch.json` out of git locally: append it to
+ * `.git/info/exclude` (never `.gitignore`, which would be committed) unless it is already
+ * tracked or already ignored by some other pattern. Silent no-op outside a git repository.
+ */
+export async function excludeLaunchJsonFromGit(
+  dir: string,
+): Promise<{ action: ExcludeAction; excludeFile?: string }> {
+  const rel = '.claude/launch.json';
+  if (!isGitRoot(dir)) return { action: 'not-a-repo' };
+  const commonDir = await gitCommonDir(dir);
+  if (!commonDir) return { action: 'not-a-repo' };
+  const tracked = await run('git', ['-C', dir, 'ls-files', '--error-unmatch', rel], {
+    timeoutMs: 1500,
+  });
+  if (tracked.code === 0) return { action: 'tracked' };
+  const ignored = await run('git', ['-C', dir, 'check-ignore', '-q', rel], { timeoutMs: 1500 });
+  if (ignored.code === 0) return { action: 'ignored' };
+  const excludeFile = path.join(commonDir, 'info', 'exclude');
+  const text = existsSync(excludeFile) ? readFileSync(excludeFile, 'utf8') : '';
+  if (text.split('\n').some((l) => l.trim() === rel)) {
+    return { action: 'already-excluded', excludeFile };
+  }
+  const sep = text.length === 0 || text.endsWith('\n') ? '' : '\n';
+  appendFileSafe(excludeFile, `${sep}${rel}\n`);
+  return { action: 'excluded', excludeFile };
 }
 
 export async function cmdLaunchJson(args: ParsedArgs, io: IO): Promise<number> {
@@ -110,7 +158,14 @@ export async function cmdLaunchJson(args: ParsedArgs, io: IO): Promise<number> {
       scripts = {};
     }
   }
-  const configs = buildLaunchConfigs(policy, ctx.project.name, ctx.W, scripts, dir);
+  // The desktop app already runs configurations from `dir` (where .claude/launch.json lives), so
+  // a config-level `cwd` is only meaningful — and only written — when --cwd points elsewhere.
+  // ctx.cwd is realpath-resolved (see normalizeDir); project.path as parsed from policy.toml is
+  // only path.resolve'd, so both sides need normalizeDir before comparing (macOS /var vs
+  // /private/var and the like) or every write from the repo root would spuriously get a cwd.
+  const rel = path.relative(normalizeDir(dir), ctx.cwd);
+  const configCwd = rel === '' ? undefined : rel;
+  const configs = buildLaunchConfigs(policy, ctx.project.name, ctx.W, scripts, configCwd);
   const file = path.join(dir, '.claude', 'launch.json');
   let existing: LaunchJson = { version: '0.0.1', configurations: [] };
   if (existsSync(file)) {
@@ -133,6 +188,14 @@ export async function cmdLaunchJson(args: ParsedArgs, io: IO): Promise<number> {
     io.out(
       `wrote ${file} (${configs.length} berth configuration${configs.length === 1 ? '' : 's'})`,
     );
+    if (args.flags.exclude !== false) {
+      const r = await excludeLaunchJsonFromGit(dir);
+      if (r.action === 'excluded' && r.excludeFile) {
+        io.out(
+          `excluded .claude/launch.json via ${contractHome(r.excludeFile)} (never committed by accident)`,
+        );
+      }
+    }
   } else io.out(text);
   return 0;
 }
