@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The npm package's `homepage` is the documentation site (https://amiable-dev.github.io/berth/) instead of the README; npmjs.com and `npm docs` link there from the next release.
+- Reconciler: a live holder inside a project's own block that is already attributed by evidence (compose `working_dir` label or process cwd) is now `ok` with no lease required, instead of `unmanaged`. `PortRecord` gains `attribution: 'lease' | 'evidence'`; a holder with no attribution stays `unmanaged`, and a container started outside Compose gets advisory copy that says so instead of the generic adopt text (#19).
 
 ## [0.1.5] - 2026-09-14
 

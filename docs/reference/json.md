@@ -29,6 +29,7 @@ interface PortRecord {
   evidence: string[];            // one line per source, e.g. "docker: container x, compose y, working_dir ~/p"
   advisory: { text: string; command?: string } | null;
   url?: string; age?: string;
+  attribution?: 'lease' | 'evidence';   // how project/worktree/role is known; omitted when neither applies
 }
 
 interface Lease {

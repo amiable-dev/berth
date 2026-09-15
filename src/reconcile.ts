@@ -14,7 +14,7 @@ import {
   sharedFor,
   summarizePolicy,
 } from './policy.js';
-import { isVmProxy } from './truth.js';
+import { isUnlabelledContainer, isVmProxy } from './truth.js';
 import type {
   CheckReport,
   Container,
@@ -58,6 +58,17 @@ export const ADVISORY: Record<State, { text: string; command?: (port: number) =>
     text: 'Config declares a port outside its allocation, or a labelled service vanished. Never reassign.',
     command: () => 'berth scan --write',
   },
+};
+
+/**
+ * Advisory text for an `unmanaged` in-block port whose holder is a container with no compose
+ * labels (started with `docker run`, not `docker-compose`): the generic "adopt" copy would
+ * imply berth could have attributed it and chose not to, which is not what happened. Same
+ * command as `ADVISORY.unmanaged` — adopting by hand is still the fallback.
+ */
+const UNLABELLED_CONTAINER_ADVISORY: { text: string; command?: (port: number) => string } = {
+  text: 'Started outside Compose, so berth cannot attribute it; start it through docker-compose (it then carries the project label) or berth adopt <port> --owner human.',
+  command: ADVISORY.unmanaged.command,
 };
 
 const MACOS_DAEMONS = new Set([
@@ -271,6 +282,7 @@ export function reconcile(input: ReconcileInput): CheckReport {
     let worktree: number | undefined;
     let role: string | undefined;
     let kind: PortRecord['kind'];
+    let advisoryOverride: { text: string; command?: (port: number) => string } | undefined;
 
     if (shared) {
       kind = 'shared';
@@ -324,9 +336,24 @@ export function reconcile(input: ReconcileInput): CheckReport {
         worktree = decoded.W;
         role = roleName(policy, blockProject, decoded.R);
         kind = 'block';
-        state = lv.project && lv.project !== blockProject.name ? 'squatter' : 'unmanaged';
-        if (state === 'squatter')
+        if (lv.project === blockProject.name) {
+          // Attribution (compose label or cwd) already says whose service this is, on whose
+          // numbers: there is nothing to adopt. A lease still wins when one exists (see the
+          // `lease` branch above); this is the no-lease case.
+          state = 'ok';
+          evidence.push(`no lease: holder is attributed to ${blockProject.name} by evidence`);
+        } else if (lv.project) {
+          state = 'squatter';
           evidence.push(`holder belongs to ${lv.project}; block belongs to ${blockProject.name}`);
+        } else {
+          state = 'unmanaged';
+          const container = lv.container
+            ? truth.containers.find((c) => c.name === lv.container)
+            : undefined;
+          if (container && isUnlabelledContainer(container)) {
+            advisoryOverride = UNLABELLED_CONTAINER_ADVISORY;
+          }
+        }
       } else if (decoded || inDynamicPool(policy, port)) {
         state = 'unmanaged';
         if (inDynamicPool(policy, port)) kind = 'dynamic';
@@ -356,7 +383,15 @@ export function reconcile(input: ReconcileInput): CheckReport {
       continue;
     }
 
-    const adv = ADVISORY[state];
+    const adv = advisoryOverride ?? ADVISORY[state];
+    // How the project/worktree/role attribution above is known: a lease is the record of
+    // intent and always wins when present; otherwise it is live evidence (compose label, cwd)
+    // when the holder resolved to a project. No lease and no resolved holder: no attribution.
+    const attribution: PortRecord['attribution'] = lease
+      ? 'lease'
+      : lv?.project
+        ? 'evidence'
+        : undefined;
     records.push({
       port,
       state,
@@ -373,6 +408,7 @@ export function reconcile(input: ReconcileInput): CheckReport {
         ? { url: urlFor(port, role, kind, shared?.service) }
         : {}),
       ...(lease ? { age: humanAge(lease.created, now) } : {}),
+      ...(attribution ? { attribution } : {}),
     });
   }
 

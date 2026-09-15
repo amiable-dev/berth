@@ -87,3 +87,27 @@ would be additive: it changes attribution confidence, not the state vocabulary.
   the container's repository as owner, never `ssh`.
 - Each of the eight states has at least one fixture that produces it and
   asserts the advisory text.
+
+## Amendment (2026-09-15)
+
+Registering a repository and moving its own services onto its own block left
+them `unmanaged` — the reconciler treated a live holder attributed to the
+block's own project the same as one with no attribution at all, and offered
+`berth adopt` for both (#19). Attribution by evidence makes an in-block
+listener `ok` without a lease when the holder — by compose `working_dir`
+label or process cwd — already resolves to the block's own project; the
+lease remains the record of intent for claims and still wins when one
+exists. `PortRecord.attribution` (`'lease' | 'evidence'`) makes that
+distinction visible in the report without adding a ninth state.
+
+A holder with no attribution at all is still `unmanaged`. A container
+started with `docker run` rather than `docker-compose` is the case that
+motivated this: it carries no `com.docker.compose.*` labels, so there is
+still no path to attribute it, and berth deliberately does not add an
+image- or name-matching heuristic to guess one. Its advisory now says so
+(`started outside Compose … start it through docker-compose … or berth
+adopt`) instead of the generic adopt copy, which would otherwise imply
+berth chose not to attribute a holder it could see plainly. The
+container-without-compose-labels check this needs is exported from
+`src/truth.ts` for reuse (`berth env --compose-override`'s hand-run-container
+warning, #22, needs the same test).

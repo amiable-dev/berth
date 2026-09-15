@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { liveByPort, reconcile } from '../src/reconcile.js';
+import { ADVISORY, liveByPort, reconcile } from '../src/reconcile.js';
 import type { Lease, SessionFile, TruthSnapshot } from '../src/types.js';
 import { fixturePolicy, tempDir } from './helpers.js';
 
@@ -144,17 +144,19 @@ describe('states', () => {
     const r = run([lease(13001, { cwd: path.join(root, 'gone-worktree') })], truth());
     expect(r.ports.find((x) => x.port === 13001)?.state).toBe('orphan');
   });
-  it('squatter when another project binds inside a block; unmanaged when the block owner does', () => {
+  it('squatter when another project binds inside a block; unmanaged when the holder cannot be attributed at all', () => {
     const t = truth({
       listeners: [
         { port: 13005, addr: '*:13005', pid: 2, cmd: 'python', cwd: paths.beta, source: 'lsof' },
-        { port: 13006, addr: '*:13006', pid: 3, cmd: 'python', cwd: paths.alpha, source: 'lsof' },
+        { port: 13006, addr: '*:13006', pid: 3, cmd: 'python', source: 'lsof' },
         { port: 40001, addr: '*:40001', pid: 4, cmd: 'bun', source: 'lsof' },
       ],
     });
     const r = run([], t);
     expect(r.ports.find((x) => x.port === 13005)?.state).toBe('squatter');
-    expect(r.ports.find((x) => x.port === 13006)?.state).toBe('unmanaged');
+    const unattributed = r.ports.find((x) => x.port === 13006);
+    expect(unattributed).toMatchObject({ state: 'unmanaged', project: 'alpha' });
+    expect(unattributed?.attribution).toBeUndefined();
     expect(r.ports.find((x) => x.port === 40001)).toMatchObject({
       state: 'unmanaged',
       kind: 'dynamic',
@@ -256,5 +258,119 @@ describe('states', () => {
     const r = run([], t);
     expect(r.ports.find((x) => x.port === 65188)).toBeUndefined();
     expect(r.ports.find((x) => x.port === 22)).toBeUndefined();
+  });
+});
+
+// #19: a listener inside the block's own project, attributed by evidence (compose label or
+// cwd), needs no lease to be ok. Only an unattributable holder is still unmanaged, and a
+// container started outside Compose gets advisory copy that says so instead of a bare "adopt".
+describe('attribution: an in-block listener attributed to the block project is ok (#19)', () => {
+  it('ok: a container attributed by the compose working_dir label needs no lease', () => {
+    const t = truth({
+      listeners: [{ port: 13008, addr: '*:13008', pid: 503, cmd: 'ssh', source: 'lsof' }],
+      containers: [
+        {
+          id: 'c2',
+          name: 'alpha-postgres-2',
+          hostPorts: [13008],
+          composeProject: 'alpha',
+          workingDir: paths.alpha,
+        },
+      ],
+    });
+    const r = run([], t);
+    const p = r.ports.find((x) => x.port === 13008);
+    expect(p).toMatchObject({
+      state: 'ok',
+      kind: 'block',
+      project: 'alpha',
+      attribution: 'evidence',
+    });
+    expect(p?.advisory).toMatchObject({ text: 'none' });
+    expect(p?.advisory?.command).toBeUndefined();
+    expect(p?.evidence.some((e) => e.includes('no lease'))).toBe(true);
+  });
+
+  it('ok: a dev server process attributed by cwd needs no lease', () => {
+    const t = truth({
+      listeners: [
+        {
+          port: 13009,
+          addr: '*:13009',
+          pid: 42,
+          cmd: 'node',
+          cwd: `${paths.alpha}/apps/web`,
+          source: 'lsof',
+        },
+      ],
+    });
+    const r = run([], t);
+    const p = r.ports.find((x) => x.port === 13009);
+    expect(p).toMatchObject({
+      state: 'ok',
+      kind: 'block',
+      project: 'alpha',
+      attribution: 'evidence',
+    });
+    expect(p?.advisory?.command).toBeUndefined();
+  });
+
+  it('unmanaged: a container started outside Compose gets the compose-specific advisory, not the bare adopt text', () => {
+    const t = truth({
+      listeners: [{ port: 13010, addr: '*:13010', pid: 503, cmd: 'ssh', source: 'lsof' }],
+      containers: [{ id: 'c3', name: 'penguin-platform-db', hostPorts: [13010] }],
+    });
+    const r = run([], t);
+    const p = r.ports.find((x) => x.port === 13010);
+    expect(p).toMatchObject({ state: 'unmanaged', kind: 'block', project: 'alpha' });
+    expect(p?.attribution).toBeUndefined();
+    expect(p?.advisory?.text).not.toBe(ADVISORY.unmanaged.text);
+    expect(p?.advisory?.text).toMatch(/started outside compose/i);
+    expect(p?.advisory?.text).toMatch(/docker-compose/);
+    expect(p?.advisory?.command).toBe('berth adopt 13010 --owner human');
+  });
+
+  it('unmanaged: a holder with no attribution at all keeps the generic adopt advisory', () => {
+    const t = truth({
+      listeners: [{ port: 13011, addr: '*:13011', pid: 9, cmd: 'python', source: 'lsof' }],
+    });
+    const r = run([], t);
+    const p = r.ports.find((x) => x.port === 13011);
+    expect(p).toMatchObject({ state: 'unmanaged', kind: 'block', project: 'alpha' });
+    expect(p?.attribution).toBeUndefined();
+    expect(p?.advisory?.text).toBe(ADVISORY.unmanaged.text);
+    expect(p?.advisory?.command).toBe('berth adopt 13011 --owner human');
+  });
+
+  it('squatter stays squatter, with evidence attribution, when the holder belongs to a different project', () => {
+    const t = truth({
+      listeners: [
+        { port: 13012, addr: '*:13012', pid: 2, cmd: 'python', cwd: paths.beta, source: 'lsof' },
+      ],
+    });
+    const r = run([], t);
+    const p = r.ports.find((x) => x.port === 13012);
+    expect(p).toMatchObject({ state: 'squatter', attribution: 'evidence' });
+  });
+
+  it('regression: a leased in-block port keeps attribution "lease" even though the holder also matches the project by cwd', () => {
+    const r = run(
+      [lease(13001)],
+      truth({
+        listeners: [
+          {
+            port: 13001,
+            addr: '*:13001',
+            pid: 1,
+            cmd: 'node',
+            cwd: paths.alpha,
+            sessionId: 'sess-alpha-1',
+            source: 'lsof',
+          },
+        ],
+      }),
+    );
+    const p = r.ports.find((x) => x.port === 13001);
+    expect(p).toMatchObject({ state: 'ok', attribution: 'lease' });
   });
 });
