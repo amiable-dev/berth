@@ -232,7 +232,7 @@ describe('agent guard', () => {
     expect(JSON.parse(c.out.join(''))).toMatchObject({ dryRun: true });
   });
 
-  it('the human-only refusal explains why and names the tidy apply path', async () => {
+  it('the human-only refusal explains why, and names the tidy apply path only where tidy is a real alternative', async () => {
     const tidy = capture();
     expect(await main(['tidy'], tidy.io)).toBe(1);
     expect(tidy.err.join(' ')).toMatch(/human-only command/);
@@ -244,5 +244,24 @@ describe('agent guard', () => {
     expect(adopt.err.join(' ')).toMatch(/human-only command/);
     expect(adopt.err.join(' ')).toMatch(/attributes a port to a person/);
     expect(adopt.err.join(' ')).toMatch(/berth tidy --project <name>/);
+
+    const release = capture();
+    expect(await main(['release', '--port', '1234', '--force'], release.io)).toBe(1);
+    expect(release.err.join(' ')).toMatch(/human-only command/);
+    expect(release.err.join(' ')).toMatch(/berth tidy --project <name>/);
+
+    const releaseAll = capture();
+    expect(await main(['release', '--all', '--force'], releaseAll.io)).toBe(1);
+    expect(releaseAll.err.join(' ')).toMatch(/human-only command/);
+    expect(releaseAll.err.join(' ')).toMatch(/berth tidy --project <name>/);
+
+    // free, hooks install, worktrees prune and init --force are refused for reasons tidy cannot
+    // fix (it never touches a live process, a hook, a worktree slot or the policy), so the
+    // refusal must not point at it.
+    const free = capture();
+    expect(await main(['free', '1234'], free.io)).toBe(1);
+    expect(free.err.join(' ')).toMatch(/human-only command/);
+    expect(free.err.join(' ')).toMatch(/sends SIGTERM to a live process/);
+    expect(free.err.join(' ')).not.toMatch(/berth tidy/);
   });
 });

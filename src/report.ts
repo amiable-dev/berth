@@ -11,6 +11,13 @@ export interface ReportOptions extends SnapshotOptions {
   policy?: Policy;
   /** Try to fold claim files first (skipped silently if the lock is busy). */
   compact?: boolean;
+  /**
+   * Use this snapshot instead of spawning lsof/netstat/docker/ps. For tests: every other truth
+   * consumer goes through `reconcile()` directly with a synthetic `TruthSnapshot`; this lets a
+   * command that only knows `buildReport()` do the same, so its tests never depend on what is
+   * actually bound on the host running them.
+   */
+  truth?: TruthSnapshot;
 }
 
 export async function buildReport(opts: ReportOptions = {}): Promise<CheckReport> {
@@ -24,12 +31,14 @@ export async function buildReport(opts: ReportOptions = {}): Promise<CheckReport
       // lock busy: read the un-compacted view instead
     }
   }
-  const truth = await snapshot({
-    maxAgeMs: opts.maxAgeMs ?? 1000,
-    ...(opts.skipDocker ? { skipDocker: true } : {}),
-    ...(opts.skipEnv ? { skipEnv: true } : {}),
-    ...(opts.skipNetstat ? { skipNetstat: true } : {}),
-  });
+  const truth =
+    opts.truth ??
+    (await snapshot({
+      maxAgeMs: opts.maxAgeMs ?? 1000,
+      ...(opts.skipDocker ? { skipDocker: true } : {}),
+      ...(opts.skipEnv ? { skipEnv: true } : {}),
+      ...(opts.skipNetstat ? { skipNetstat: true } : {}),
+    }));
   return reconcile({
     policy,
     leases: allLeases(),

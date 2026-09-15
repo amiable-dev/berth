@@ -197,17 +197,32 @@ describe('cmdTidy', () => {
     betaDir = fx.paths.beta;
   });
 
+  // No test here reads what is actually bound on the machine running it: every call passes an
+  // empty, synthetic truth snapshot through cmdTidy's test-only `deps.truth` seam, so state is
+  // decided entirely by the leases these tests create (never by real listeners or docker).
+  function emptyTruth(): TruthSnapshot {
+    return {
+      takenAt: new Date(NOW).toISOString(),
+      full: true,
+      listeners: [],
+      containers: [],
+      dockerAvailable: true,
+      colima: true,
+    };
+  }
+  const noHost = { truth: emptyTruth() };
+
   it('reports nothing to tidy on an empty ledger', async () => {
-    // scoped to alpha's own block: the host this test runs on may have unrelated real listeners
-    // elsewhere (other projects, other sessions), which is exactly what --project exists to filter.
     const c = capture();
-    expect(await cmdTidy(parseArgs(['tidy', '--dry-run', '--project', 'alpha']), c.io)).toBe(0);
-    expect(c.out.join('\n')).toBe('nothing to tidy (project alpha)');
+    expect(await cmdTidy(parseArgs(['tidy', '--dry-run']), c.io, noHost)).toBe(0);
+    expect(c.out.join('\n')).toBe('nothing to tidy (all projects)');
   });
 
   it('refuses an unknown --project', async () => {
     const c = capture();
-    expect(await cmdTidy(parseArgs(['tidy', '--project', 'ghost', '--dry-run']), c.io)).toBe(1);
+    expect(
+      await cmdTidy(parseArgs(['tidy', '--project', 'ghost', '--dry-run']), c.io, noHost),
+    ).toBe(1);
     expect(c.err.join(' ')).toMatch(/unknown project ghost/);
   });
 
@@ -226,9 +241,7 @@ describe('cmdTidy', () => {
     await addClaim('human-other', stale);
 
     const dry = capture();
-    expect(
-      await cmdTidy(parseArgs(['tidy', '--dry-run', '--json', '--project', 'alpha']), dry.io),
-    ).toBe(0);
+    expect(await cmdTidy(parseArgs(['tidy', '--dry-run', '--json']), dry.io, noHost)).toBe(0);
     const plan = JSON.parse(dry.out.join('')) as { dryRun: boolean; release: { port: number }[] };
     expect(plan.dryRun).toBe(true);
     expect(plan.release.map((r) => r.port)).toEqual([13001]);
@@ -236,7 +249,7 @@ describe('cmdTidy', () => {
 
     // apply mode's --json mirrors the plan too, plus which ports were actually released
     const applied = capture();
-    expect(await cmdTidy(parseArgs(['tidy', '--project', 'alpha', '--json']), applied.io)).toBe(0);
+    expect(await cmdTidy(parseArgs(['tidy', '--json']), applied.io, noHost)).toBe(0);
     const appliedPlan = JSON.parse(applied.out.join('')) as {
       dryRun: boolean;
       released: number[];
@@ -247,8 +260,8 @@ describe('cmdTidy', () => {
     expect(allLeases().some((l) => l.port === 13001)).toBe(false);
 
     const again = capture();
-    expect(await cmdTidy(parseArgs(['tidy', '--project', 'alpha']), again.io)).toBe(0);
-    expect(again.out.join('\n')).toBe('nothing to tidy (project alpha)');
+    expect(await cmdTidy(parseArgs(['tidy']), again.io, noHost)).toBe(0);
+    expect(again.out.join('\n')).toBe('nothing to tidy (all projects)');
   });
 
   it('--project limits scope; live (idle) leases and other projects are never touched', async () => {
@@ -290,7 +303,7 @@ describe('cmdTidy', () => {
     await addClaim('sess-x', alphaIdle);
 
     const c = capture();
-    expect(await cmdTidy(parseArgs(['tidy', '--project', 'alpha']), c.io)).toBe(0);
+    expect(await cmdTidy(parseArgs(['tidy', '--project', 'alpha']), c.io, noHost)).toBe(0);
     const ports = allLeases()
       .map((l) => l.port)
       .sort((a, b) => a - b);

@@ -5,7 +5,7 @@ import { loadPolicy, projectByName } from '../policy.js';
 import { ownerDesc } from '../reconcile.js';
 import { buildReport } from '../report.js';
 import { currentSession } from '../session.js';
-import type { CheckReport, PortRecord, State } from '../types.js';
+import type { CheckReport, PortRecord, State, TruthSnapshot } from '../types.js';
 import { appendFileSafe, nowIso } from '../util.js';
 import type { IO } from './query.js';
 
@@ -128,7 +128,12 @@ export function renderTidyPlan(
   return lines.join('\n');
 }
 
-export async function cmdTidy(args: ParsedArgs, io: IO): Promise<number> {
+export async function cmdTidy(
+  args: ParsedArgs,
+  io: IO,
+  /** Test-only seam: inject a synthetic snapshot instead of reading the real host. */
+  deps: { truth?: TruthSnapshot } = {},
+): Promise<number> {
   const policy = loadPolicy();
   const projectFlag = flagString(args.flags, 'project');
   let projectName: string | undefined;
@@ -142,7 +147,7 @@ export async function cmdTidy(args: ParsedArgs, io: IO): Promise<number> {
   }
   const dryRun = flagBool(args.flags, 'dry-run');
   const json = flagBool(args.flags, 'json');
-  const report = await buildReport({ policy });
+  const report = await buildReport({ policy, ...(deps.truth ? { truth: deps.truth } : {}) });
   const plan = buildTidyPlan(report, projectName);
 
   if (dryRun) {

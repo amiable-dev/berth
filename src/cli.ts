@@ -234,8 +234,14 @@ export async function main(argv: string[], io: IO = DEFAULT_IO): Promise<number>
       const why = inAgentSession()
         ? 'an agent session (CLAUDECODE is set)'
         : 'a non-interactive shell';
+      // `tidy` is only an actual alternative for the leftovers it can act on (releasing a lease,
+      // any owner): naming it after `free`/`hooks install`/`init --force` would be wrong advice.
+      const tail =
+        args.cmd === 'adopt' || args.cmd === 'release' || args.cmd === 'tidy'
+          ? 'Run it from your own terminal, or `berth tidy --project <name>` applies the plan berth has shown you. Set BERTH_ALLOW_DESTRUCTIVE=1 to allow it deliberately.'
+          : 'Run it from your own terminal, or set BERTH_ALLOW_DESTRUCTIVE=1 to allow it deliberately.';
       io.err(
-        `berth: "${argv.join(' ')}" is refused from ${why}: ${humanOnlyReason(args)}; it is a human-only command (ADR-008). Run it from your own terminal, or \`berth tidy --project <name>\` applies the plan berth has shown you. Set BERTH_ALLOW_DESTRUCTIVE=1 to allow it deliberately.`,
+        `berth: "${argv.join(' ')}" is refused from ${why}: ${humanOnlyReason(args)}; it is a human-only command (ADR-008). ${tail}`,
       );
       audit(
         `refused argv=${JSON.stringify(argv)} agent=${inAgentSession()} tty=${Boolean(process.stdin.isTTY)}`,
