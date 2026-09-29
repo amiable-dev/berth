@@ -138,28 +138,38 @@ export function isGitRoot(dir: string): boolean {
 export interface AddResult extends ProjectSpec {
   created: boolean;
   block: [number, number];
+  /** Compose services with no canonical role and no free extras slot (10-99). */
+  droppedExtras: string[];
 }
 
-/** Infer extras slots for Compose services whose role is not one of the canonical ten. */
+/**
+ * Infer extras slots for Compose services whose role is not one of the canonical ten. Slots run
+ * 10-99, so a repository with more than ninety such services has more than the scheme can name:
+ * `dropped` carries those, in Compose order, for the caller to report rather than swallow.
+ */
 export async function inferExtras(
   policy: Policy,
   project: Project,
-): Promise<Record<string, number>> {
+): Promise<{ extras: Record<string, number>; dropped: string[] }> {
   const file = findComposeFile(project.path);
-  if (!file) return {};
+  if (!file) return { extras: {}, dropped: [] };
   const services = await composeServices(file);
   const extras: Record<string, number> = {};
+  const dropped: string[] = [];
   let slot = 10;
   for (const svc of services) {
     for (const port of svc.ports) {
       const role = inferRole(policy, project, svc, port.container);
       if (roleNumber(policy, project, role) !== undefined || role in extras) continue;
       if (!/^[a-z][a-z0-9-]{0,31}$/.test(role)) continue;
-      if (slot > 99) break;
+      if (slot > 99) {
+        if (!dropped.includes(role)) dropped.push(role);
+        continue;
+      }
       extras[role] = slot++;
     }
   }
-  return extras;
+  return { extras, dropped };
 }
 
 export async function addProject(policyFile: string, opts: AddOptions): Promise<AddResult> {
@@ -178,12 +188,15 @@ export async function addProject(policyFile: string, opts: AddOptions): Promise<
   // The scan is read-only and slow-ish: do it outside the lock, then re-verify everything inside.
   let declared: number[] = [];
   let extras: Record<string, number> = {};
+  let droppedExtras: string[] = [];
   if (opts.scan !== false) {
     const probe = parsePolicy(readFileSync(policyFile, 'utf8'));
     const draft: Project = { name, P: -1, path: dir, declared: [], extras: {} };
     try {
       declared = [...new Set(scanProject(draft).map((h) => h.port))].sort((a, b) => a - b);
-      extras = await inferExtras(probe, draft);
+      const inferred = await inferExtras(probe, draft);
+      extras = inferred.extras;
+      droppedExtras = inferred.dropped;
     } catch {
       // best-effort: a scan failure never blocks registration
     }
@@ -194,7 +207,12 @@ export async function addProject(policyFile: string, opts: AddOptions): Promise<
     const policy = parsePolicy(text);
     const existingByPath = Object.values(policy.projects).find((p) => normalizeDir(p.path) === dir);
     if (existingByPath)
-      return { ...existingByPath, created: false, block: blockRange(policy, existingByPath.P) };
+      return {
+        ...existingByPath,
+        created: false,
+        block: blockRange(policy, existingByPath.P),
+        droppedExtras,
+      };
     const existingByName = policy.projects[name];
     if (existingByName) {
       throw new Error(
@@ -228,7 +246,7 @@ export async function addProject(policyFile: string, opts: AddOptions): Promise<
     const validated = parsePolicy(next);
     if (!validated.projects[name]) throw new Error('internal: appended table did not parse back');
     atomicWriteSync(policyFile, next, { backup: true, mode: 0o644 });
-    return { ...spec, created: true, block: blockRange(validated, P) };
+    return { ...spec, created: true, block: blockRange(validated, P), droppedExtras };
   });
 }
 
@@ -313,6 +331,16 @@ export async function cmdProject(args: ParsedArgs, io: IO): Promise<number> {
             .map(([k, v]) => `${k}=${v}`)
             .join(', ')}`,
         );
+      if (r.droppedExtras.length) {
+        const shown = r.droppedExtras.slice(0, 5).join(', ');
+        const rest = r.droppedExtras.length - Math.min(5, r.droppedExtras.length);
+        io.err(
+          `  warning: ${r.droppedExtras.length} compose service(s) got no extras slot; 10-99 was full: ${shown}${rest ? `, and ${rest} more` : ''}`,
+        );
+        io.err(
+          '  give them canonical roles in [scheme].roles, or split the repository across two project numbers',
+        );
+      }
       if (r.created)
         io.out(
           '  next: eval "$(berth env --shell)" · berth env --compose-override · berth launch-json --write · berth check',

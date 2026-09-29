@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `berth project add` no longer drops Compose services in silence when a repository has more than ninety non-canonical ones. Extras slots run 10–99; past that, `inferExtras` quietly stopped assigning and the project was reported as registered with no hint that part of it had been left out. It now returns what it could not place, and `project add` warns with the count, the first few service names and the two ways out. `berth claim --extra` already failed loudly on the same exhaustion; the two paths now agree (#43).
+
 ### Changed
 
 - Documentation: the Claude Code guide now carries the Ports rules text for `~/.claude/CLAUDE.md` under its own heading, which is where `berth doctor` sends a reader who has none. It previously forwarded them to `examples/CLAUDE.ports.md`, a file nobody reading the site has. The README's two references became absolute URLs so they resolve from an unpacked package as well. `DESIGN.md` and the ADRs keep their references: they are the historical record, and ADR-006's is the statement of the problem it solved (#40).

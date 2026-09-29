@@ -9,6 +9,7 @@ import {
   appendProjectTable,
   cmdInit,
   cmdProject,
+  inferExtras,
   nextFreeP,
   renderInitPolicy,
 } from '../src/commands/project.js';
@@ -263,5 +264,79 @@ describe('agent guard', () => {
     expect(free.err.join(' ')).toMatch(/human-only command/);
     expect(free.err.join(' ')).toMatch(/sends SIGTERM to a live process/);
     expect(free.err.join(' ')).not.toMatch(/berth tidy/);
+  });
+});
+
+describe('extras slots run out', () => {
+  let policyFile = '';
+  let root = '';
+  beforeEach(() => {
+    const t = useTempState();
+    root = t.root;
+    policyFile = path.join(t.config, 'policy.toml');
+    process.env.BERTH_POLICY = policyFile;
+    writePolicy(policyFile, '[scheme]\nbase = 10000\n');
+  });
+
+  /** A compose file with `n` services none of which maps to a canonical role. */
+  function manyServices(dir: string, n: number): string[] {
+    const names = Array.from({ length: n }, (_, i) => `svc-${String(i).padStart(3, '0')}`);
+    const body = names
+      .map((s, i) => `  ${s}:\n    image: nginx\n    ports:\n      - "${20000 + i}:80"\n`)
+      .join('');
+    mkdirSync(path.join(dir, '.git'), { recursive: true });
+    writeFileSync(path.join(dir, 'docker-compose.yml'), `services:\n${body}`);
+    return names;
+  }
+
+  it('fills slots 10 to 99 and names every service it could not place', async () => {
+    const repo = path.join(root, 'huge');
+    const names = manyServices(repo, 95);
+    const { extras, dropped } = await inferExtras(parsePolicy(readFileSync(policyFile, 'utf8')), {
+      name: 'huge',
+      P: -1,
+      path: repo,
+      declared: [],
+      extras: {},
+    });
+    const slots = Object.values(extras).sort((a, b) => a - b);
+    expect(slots).toHaveLength(90);
+    expect(slots[0]).toBe(10);
+    expect(slots[89]).toBe(99);
+    expect(Math.max(...slots)).toBeLessThan(100);
+    // the five it could not place are the tail of the compose file, in that order
+    expect(dropped).toEqual(names.slice(90));
+  });
+
+  it('reports nothing dropped when the services fit', async () => {
+    const repo = path.join(root, 'small');
+    manyServices(repo, 3);
+    const { extras, dropped } = await inferExtras(parsePolicy(readFileSync(policyFile, 'utf8')), {
+      name: 'small',
+      P: -1,
+      path: repo,
+      declared: [],
+      extras: {},
+    });
+    expect(Object.keys(extras)).toHaveLength(3);
+    expect(dropped).toEqual([]);
+  });
+
+  it('still registers the project, and says what it could not place', async () => {
+    const repo = path.join(root, 'huge2');
+    manyServices(repo, 95);
+    const direct = await addProject(policyFile, { path: repo });
+    expect(direct.created).toBe(true);
+    expect(direct.droppedExtras).toHaveLength(5);
+    writePolicy(policyFile, '[scheme]\nbase = 10000\n');
+    const c = capture();
+    const code = await cmdProject({ cmd: 'project', positional: ['add', repo], flags: {} }, c.io);
+    expect(code).toBe(0);
+    const text = [...c.out, ...c.err].join('\n');
+    expect(text).toContain('registered');
+    expect(text).toMatch(/5 /);
+    expect(text).toContain('svc-090');
+    const r = await addProject(policyFile, { path: path.join(root, 'huge-b') }).catch(() => null);
+    void r;
   });
 });
