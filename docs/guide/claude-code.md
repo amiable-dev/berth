@@ -20,7 +20,7 @@ advisory registry work at all.
 ```markdown
 ## Ports (berth)
 
-Every project on this machine has a permanent number P in `~/.config/berth/policy.toml`, and its ports are `10000 + 1000·P + 100·W + R` (W = worktree, 0 for the main checkout; R = role: 00 web, 01 api, 02 db, 03 cache, 04 smtp, 05 mail-ui, 06 docs, 07 worker, 08 otlp-grpc, 09 otlp-http, 10–99 project-named extras). Reading a port is decoding it: 13204 is project 3, worktree 2, smtp.
+Every project on this machine has a permanent number P in `~/.config/berth/policy.toml`, and its ports are `10000 + 1000·P + 100·W + R` (W = worktree, 0 for the main checkout; R = role: 00 web, 01 api, 02 db, 03 cache, 04 smtp, 05 mail-ui, 06 docs, 07 worker, 08 otlp-grpc, 09 otlp-http, 10–99 project-named extras). Reading a port is decoding it: subtract the base first, then read P, W, R off what is left. 13204 − 10000 = 3204, so project 3, worktree 2, smtp; 31010 − 10000 = 21010, so project 21, worktree 0, role 10. Do not read the digits in place — that only works while P is a single digit.
 
 - At session start berth injects this project's block and exports `PORT`, `API_PORT`, `DB_PORT` and the other role ports. If they are missing, run `berth env --shell` (or `berth env --dotenv`, `berth env --compose-override`).
 - Pass the port explicitly (`--port $PORT`, `-p $PORT`) and use strict mode (`vite --strictPort`). Never let a framework pick a port. If the port is taken, stop and report; do not increment.

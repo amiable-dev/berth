@@ -12,7 +12,11 @@ port = 10000 + 1000·P + 100·W + R
 | **W** | worktree: 0 is the main checkout, 1–9 additional git worktrees | 0–9 |
 | **R** | role slot | 00 web · 01 api · 02 db · 03 cache · 04 smtp · 05 mail-ui · 06 docs · 07 worker · 08 otlp-grpc · 09 otlp-http · 10–99 project-named extras |
 
-Reading a port is decoding it. 13204 is project 3, worktree 2, smtp. Humans can remember the rule; agents can compute it; nobody needs the allocation table. The base (10000), the number of projects and the dynamic pool are configurable in the [policy](../reference/policy), but the shape is fixed on purpose: hashed schemes cannot be read, and per-tool sequential blocks always need a lookup.
+Reading a port is decoding it: subtract the base, then read the result as P, W, R. 13204 − 10000 = 3204, so project 3, worktree 2, smtp.
+
+Subtract first, because for the first ten projects the digits happen to line up one per field and it is tempting to read them off directly. That stops at P=10, where the thousands carry into the leading digit. 31010 − 10000 = 21010: project **21**, worktree 0, role 10 — not project 1, as the digits alone suggest.
+
+Humans can remember the rule; agents can compute it; nobody needs the allocation table. The base (10000), the number of projects and the dynamic pool are configurable in the [policy](../reference/policy), but the shape is fixed on purpose: hashed schemes cannot be read, and per-tool sequential blocks always need a lookup.
 
 ## Worktrees
 

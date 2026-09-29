@@ -18,7 +18,13 @@
   .decode { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 28px; font-size: 22px; line-height: 1.35; }
   .decode b { display: block; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; font-size: 20px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; }
   .cP b { color: var(--dp); } .cW b { color: var(--dw); } .cR b { color: var(--dr); }
-  .formula { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 26px; margin-top: 30px; padding-top: 22px; border-top: 1px dashed var(--line); }
+  .carry { margin-top: 28px; padding-top: 22px; border-top: 1px dashed var(--line); }
+  .carry b { display: block; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; font-size: 20px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; color: var(--ink-2); }
+  .sum { display: flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-weight: 600; font-size: 46px; line-height: 1; }
+  .sum .lhs { color: var(--ink-2); }
+  .sum span.chip { padding: 5px 10px; border-radius: 6px; }
+  .note { margin-top: 12px; font-size: 20px; color: var(--ink-2); }
+  .formula { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 26px; margin-top: 26px; padding-top: 22px; border-top: 1px dashed var(--line); }
 </style>
 </head>
 <body>
@@ -29,6 +35,14 @@
     <div class="cP"><b>P · project</b>3 = breach-resolve, permanent</div>
     <div class="cW"><b>W · worktree</b>2 = second additional worktree (0 is main)</div>
     <div class="cR"><b>R · role</b>04 = smtp</div>
+  </div>
+  <div class="carry">
+    <b>once P reaches 10, subtract the base first</b>
+    <div class="sum">
+      <span class="lhs">31010 − 10000 =</span>
+      <span class="chip dP">21</span><span class="chip dW">0</span><span class="chip dR">10</span>
+    </div>
+    <div class="note">project 21 · worktree 0 · role 10 — past project 9 the thousands carry into the leading digit, so the digits no longer line up one per field.</div>
   </div>
   <div class="formula">port = 10000 + 1000·P + 100·W + R &nbsp; · &nbsp; P 0–29 &nbsp; W 0–9 &nbsp; R 00–99</div>
 </div>

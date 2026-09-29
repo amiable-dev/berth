@@ -6,12 +6,12 @@ Documentation: https://amiable-dev.github.io/berth/ · Package: [`@amiable-dev/b
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/port-rule-dark.png">
-  <img alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp. port = 10000 + 1000·P + 100·W + R" src="docs/images/port-rule-light.png" width="100%">
+  <img alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp. Past project 9 the digits stop lining up, so subtract the base first: 31010 − 10000 = 21010, project 21, worktree 0, role 10. port = 10000 + 1000·P + 100·W + R" src="docs/images/port-rule-light.png" width="100%">
 </picture>
 
 When several Claude Code sessions, a couple of git worktrees and a Docker stack all start dev servers on one laptop, ports collide and every session loses track of the port it was given. berth fixes the bookkeeping, not the servers:
 
-- **Every project gets a permanent block of ports**, and the number itself says whose it is. 13204 is project 3, worktree 2, smtp. Nobody has to remember an allocation table.
+- **Every project gets a permanent block of ports**, and the number itself says whose it is. 13204 is project 3, worktree 2, smtp. Past project 9, subtract the base before reading: 31010 − 10000 = 21010, so project 21, worktree 0, role 10. Nobody has to remember an allocation table.
 - **A small ledger records who holds which port**, and a reconciler checks it against what is actually listening, including containers behind Colima or Docker Desktop and servers started by a Claude session.
 - **Agents are told their ports when a session starts**; humans get a terminal table, `berth who <port>`, and a local dashboard.
 - **It is advisory.** berth never blocks a command and never kills anything on its own. It tells you, and your agents, the truth.

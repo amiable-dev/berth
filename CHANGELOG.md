@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation: the port rule is now taught as a subtraction rather than a digit position. Every explanation used a single-digit example, `13204 is project 3, worktree 2, smtp`, and the infographic drew one box per digit — which reads as the rule and stops being true at P=10, where the thousands carry into the leading digit and `31010` is project 21, not project 1. README, the landing page, Concepts, the Claude Code rules block and `examples/CLAUDE.ports.md` now work the two-digit case, and the infographic gained a panel showing `31010 − 10000 = 21 · 0 · 10` (#42).
+
 ### Fixed
 
 - `berth project add` no longer drops Compose services in silence when a repository has more than ninety non-canonical ones. Extras slots run 10–99; past that, `inferExtras` quietly stopped assigning and the project was reported as registered with no hint that part of it had been left out. It now returns what it could not place, and `project add` warns with the count, the first few service names and the two ways out. `berth claim --extra` already failed loudly on the same exhaustion; the two paths now agree (#43).
