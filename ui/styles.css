@@ -824,12 +824,16 @@ tr.idle {
   cursor: default;
   padding: 0;
 }
+/* an extra's slot is two digits, so it takes a role cell's width */
 .cell.x {
-  width: 12px;
+  width: 22px;
 }
-/* legacy cell: wide enough for its port number; number in --bg on solid fills, --fg on hatches */
+/* a legacy cell is wide enough for a whole port */
 .cell.lg {
   width: 34px;
+}
+/* a labelled cell: number in --bg on the solid fills, --fg on the hatches, --faint when empty */
+.cell.num {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -838,10 +842,13 @@ tr.idle {
   line-height: 1;
   color: var(--bg);
 }
-.cell.lg.s-stale,
-.cell.lg.s-orphan,
-.cell.lg.s-squatter,
-.cell.lg.s-conflict {
+.cell.num:not(.has) {
+  color: var(--faint);
+}
+.cell.num.s-stale,
+.cell.num.s-orphan,
+.cell.num.s-squatter,
+.cell.num.s-conflict {
   color: var(--fg);
 }
 .cell.has {
