@@ -52,7 +52,7 @@ eval "$(berth shell-init zsh)"          # once, in ~/.zshrc (or bash, fish): cd-
 |---|---|---|
 | install the plugin; optionally the global CLI for your own terminal | `berth project add .`, `berth env`, `berth launch-json --write`, claims and releases for its own session | a project's permanent number if you want a specific one, shared stacks, and the human-only commands: `free`, `--force`, `hooks install`, `worktrees prune`, `init --force` |
 
-The manual route for Claude Code (`berth hooks install`, `claude mcp add --scope user berth -- berth mcp`, the rules in [`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md)) still works and is described under Claude Code integration.
+The manual route for Claude Code (`berth hooks install`, `claude mcp add --scope user berth -- berth mcp`, the rules in [`examples/CLAUDE.ports.md`](https://github.com/amiable-dev/berth/blob/main/examples/CLAUDE.ports.md)) still works and is described under Claude Code integration.
 
 ## Day to day
 
@@ -156,7 +156,7 @@ The plugin bundles everything below and, through the SessionStart hook, puts its
 
 - **SessionStart** runs `berth context`: read-only, under 200 ms, always exit 0. It injects the project's block, current leases, shared services and any live conflict touching this project, and appends the role-port exports to `CLAUDE_ENV_FILE`.
 - **SessionEnd** runs `berth session-end`: records that the session ended; its leases go `stale` once nothing is bound.
-- **Rules** for `~/.claude/CLAUDE.md` are in [`examples/CLAUDE.ports.md`](examples/CLAUDE.ports.md). Strict-port is the rule that makes an advisory registry work.
+- **Rules** for `~/.claude/CLAUDE.md` are in [`examples/CLAUDE.ports.md`](https://github.com/amiable-dev/berth/blob/main/examples/CLAUDE.ports.md). Strict-port is the rule that makes an advisory registry work.
 - **MCP**: `claude mcp add --scope user berth -- berth mcp` exposes `berth_check`, `berth_who`, `berth_ls`, `berth_claim`, `berth_release` and `berth_env` to every session.
 - **Desktop preview pane**: `berth launch-json --write` generates `.claude/launch.json` with the allocated ports.
 - **Names**: `berth names sync` turns http leases into [portless](https://github.com/vercel-labs/portless) aliases such as `chancery.localhost`; berth allocates, portless only proxies.

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation: the Claude Code guide now carries the Ports rules text for `~/.claude/CLAUDE.md` under its own heading, which is where `berth doctor` sends a reader who has none. It previously forwarded them to `examples/CLAUDE.ports.md`, a file nobody reading the site has. The README's two references became absolute URLs so they resolve from an unpacked package as well. `DESIGN.md` and the ADRs keep their references: they are the historical record, and ADR-006's is the statement of the problem it solved (#40).
+
 ## [0.1.8] - 2026-09-29
 
 **First-run fix.** What a user sees who installed from npm and never cloned the repository.

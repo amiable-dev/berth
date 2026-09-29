@@ -9,7 +9,30 @@ claude plugin marketplace add amiable-dev/berth
 claude plugin install berth@berth
 ```
 
-The marketplace entry points at the npm package, so the plugin carries the compiled CLI. Update with `claude plugin update berth@berth`. The manual route (`berth hooks install`, `claude mcp add --scope user berth -- berth mcp`, the rules text in `examples/CLAUDE.ports.md`) still works for people who prefer a global install; `berth doctor` tells you which is active and warns if both are, because that runs the SessionStart hook twice.
+The marketplace entry points at the npm package, so the plugin carries the compiled CLI. Update with `claude plugin update berth@berth`. The manual route (`berth hooks install`, `claude mcp add --scope user berth -- berth mcp`, the rules text [below](#rules-for-your-global-claude-md)) still works for people who prefer a global install; `berth doctor` tells you which is active and warns if both are, because that runs the SessionStart hook twice.
+
+## Rules for your global CLAUDE.md
+
+`berth doctor` warns when your global instructions have no Ports section. Paste this one in; it is
+what tells an agent to decode a port rather than guess one, and it is the rule that makes an
+advisory registry work at all.
+
+```markdown
+## Ports (berth)
+
+Every project on this machine has a permanent number P in `~/.config/berth/policy.toml`, and its ports are `10000 + 1000·P + 100·W + R` (W = worktree, 0 for the main checkout; R = role: 00 web, 01 api, 02 db, 03 cache, 04 smtp, 05 mail-ui, 06 docs, 07 worker, 08 otlp-grpc, 09 otlp-http, 10–99 project-named extras). Reading a port is decoding it: 13204 is project 3, worktree 2, smtp.
+
+- At session start berth injects this project's block and exports `PORT`, `API_PORT`, `DB_PORT` and the other role ports. If they are missing, run `berth env --shell` (or `berth env --dotenv`, `berth env --compose-override`).
+- Pass the port explicitly (`--port $PORT`, `-p $PORT`) and use strict mode (`vite --strictPort`). Never let a framework pick a port. If the port is taken, stop and report; do not increment.
+- Before binding anything outside your exports, ask who holds it: `berth who <port>`. New service: `berth claim --role <role>` or `berth claim --extra <name>`. Scratch server: `berth claim --dynamic 1` (40000–41999, 8 h TTL). Release what you no longer need: `berth release --port <port>`.
+- Do not kill a listener you do not own. `berth free <port>` refuses other sessions' ports; report and ask instead.
+- The ports under `[shared.*]` in your policy are one stack owned by one project. Do not start another; point at it (`BERTH_SHARED_*` exports).
+- 5000 and 7000 belong to macOS (AirPlay).
+- Tell the human the exact URL you bound. `berth check` shows what needs attention; it never blocks or kills.
+```
+
+Reserved ranges beyond AirPlay come from your own policy's `[reserved]` table, so add a line for
+anything else this machine keeps clear.
 
 ## What a session gets
 
