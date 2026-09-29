@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-29
+
+**Readability fix.** One rule for the map, stated in the code: a cell prints the part of its port that its position does not already imply.
+
 ### Fixed
 
 - Dashboard map: an extra's cell now prints its two-digit slot. A cell prints the part of its port that its position does not already imply — a role cell nothing (the row's base plus the worktree plus the cell's own index), an extra its slot (the map sorts extras by slot, so position gives their ordering and nothing more), a legacy cell the whole port. Eighteen anonymous cells on a project with eighteen extras were unreadable without hovering each one; they are now a role cell's width with the slot in them, dimmed where nothing holds the port (#34).
