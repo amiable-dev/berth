@@ -1222,9 +1222,26 @@ function renderTable() {
 }
 
 /**
+ * The text a cell prints: the part of its port that the cell's position does not already imply.
+ * A role cell prints nothing, because its port is the row's base + 100·W + the cell's own index,
+ * which is what the legend means by "cells = roles 00-09 per worktree". An extra prints its
+ * two-digit slot: `renderMap` sorts a project's extras by slot, so position gives their ordering
+ * and nothing more. A legacy cell prints the whole port, having no P/W/R position to read at all.
+ * @param {number} port
+ * @param {{extra?: boolean, tick?: boolean, legacy?: boolean}} opts
+ * @returns {string|null}
+ */
+export function cellLabel(port, opts) {
+  if (opts.tick) return null;
+  if (opts.legacy) return String(port);
+  if (opts.extra) return String(port % 100).padStart(2, '0');
+  return null;
+}
+
+/**
  * One range-map cell (block, extra or legacy) or legacy-strip tick with hover tooltip and
- * click-to-drawer. A legacy cell is 34px wide and shows its port number: it sits outside the
- * block scheme, so there is no P/W/R position to read the port from.
+ * click-to-drawer. A labelled cell (see `cellLabel`) carries `num` and is wide enough for its
+ * digits: 34px for a legacy port, a role cell's 22px for an extra's slot.
  * @param {PortRecord|undefined} r
  * @param {number} port
  * @param {Project|undefined} project
@@ -1236,9 +1253,10 @@ function cell(r, port, project, opts = {}) {
   let role = opts.role || (r ? roleOf(r) : roleForPort(port, project));
   if (r && !r.decoded && role === '—') role = kindOf(r);
   const where = r && !r.decoded ? 'legacy' : `W${W}`;
+  const label = cellLabel(port, opts);
   const cls = opts.tick
     ? `tick${state ? ` s-${state}` : ''}`
-    : `cell${opts.extra ? ' x' : ''}${opts.legacy ? ' lg' : ''}${state ? ` has s-${state}` : ''}`;
+    : `cell${opts.extra ? ' x' : ''}${opts.legacy ? ' lg' : ''}${label ? ' num' : ''}${state ? ` has s-${state}` : ''}`;
   const off = r && !matches(r);
   const owner = r ? ownerLabel(r) : '';
   const node = el(
@@ -1260,7 +1278,7 @@ function cell(r, port, project, opts = {}) {
       onmouseleave: hideTip,
       onfocus: null,
     },
-    opts.legacy ? String(port) : null,
+    label,
   );
   return node;
 }
@@ -1970,4 +1988,6 @@ function boot() {
   setInterval(tick, 1000);
 }
 
-boot();
+// Guarded so that a unit test can import this module for its pure helpers: every other
+// top-level statement here is plain data, and only boot() reaches for the DOM.
+if (typeof document !== 'undefined') boot();

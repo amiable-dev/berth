@@ -7,7 +7,7 @@
       "tests/**",
       "scripts/**",
       "ui/**",
-      "!ui/fixtures/**",
+      "!ui/fixtures",
       "!src/ui/page.generated.ts"
     ]
   },
