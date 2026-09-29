@@ -242,7 +242,7 @@ export function policyExists(file = policyPath()): boolean {
 export function loadPolicy(file = policyPath()): Policy {
   if (!existsSync(file)) {
     throw new PolicyError(
-      `no policy at ${file}. Create one from examples/policy.example.toml (or set BERTH_POLICY).`,
+      `no policy at ${file}. Run \`berth init\` to write one (or set BERTH_POLICY).`,
     );
   }
   return parsePolicy(readFileSync(file, 'utf8'));

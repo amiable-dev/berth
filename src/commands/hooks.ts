@@ -190,7 +190,7 @@ export async function cmdContext(args: ParsedArgs, io: IO): Promise<number> {
     const cwd = input.cwd ?? flagString(args.flags, 'cwd') ?? process.cwd();
     if (!policyExists()) {
       emit(
-        '## Ports (berth)\nberth is installed but has no policy yet: copy examples/policy.example.toml to ~/.config/berth/policy.toml. Until then pass ports explicitly and check `lsof -nP -iTCP:<port> -sTCP:LISTEN` before binding.',
+        '## Ports (berth)\nberth is installed but has no policy yet: run `berth init`, then `berth project add .` in this repository. Until then pass ports explicitly and check `lsof -nP -iTCP:<port> -sTCP:LISTEN` before binding.',
       );
       return 0;
     }
