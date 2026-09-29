@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-09-29
+
+**Two-digit projects.** What the twenty-second project taught: the scheme was right, the way it was explained was not, and the one bound that failed silently now speaks.
+
 ### Changed
 
 - Documentation: the port rule is now taught as a subtraction rather than a digit position. Every explanation used a single-digit example, `13204 is project 3, worktree 2, smtp`, and the infographic drew one box per digit — which reads as the rule and stops being true at P=10, where the thousands carry into the leading digit and `31010` is project 21, not project 1. README, the landing page, Concepts, the Claude Code rules block and `examples/CLAUDE.ports.md` now work the two-digit case, and the infographic gained a panel showing `31010 − 10000 = 21 · 0 · 10` (#42).
