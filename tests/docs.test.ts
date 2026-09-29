@@ -28,6 +28,14 @@ describe('the port rule is explained for two-digit project numbers', () => {
     });
   }
 
+  it('describes both panels of the infographic in its alt text', () => {
+    // The image gained a second panel; alt text that stops at 13204 no longer describes it.
+    for (const alt of read('docs/index.md').match(/alt="Port 13204[^"]*"/g) ?? []) {
+      expect(alt).toContain('31010');
+    }
+    expect(read('README.md')).toMatch(/alt="Port 13204[^"]*31010/);
+  });
+
   it('shows subtracting the base, which is what makes the two-digit case readable', () => {
     for (const file of ['docs/guide/concepts.md', 'docs/images/port-rule.html']) {
       expect(read(file), file).toMatch(/− ?10000|- ?10000|subtract/i);
