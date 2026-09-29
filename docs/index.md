@@ -16,7 +16,7 @@ hero:
       link: https://github.com/amiable-dev/berth
 features:
   - title: The number is the rule
-    details: "port = 10000 + 1000·P + 100·W + R. Reading a port is decoding it: 13204 is project 3, worktree 2, smtp. No allocation table to remember."
+    details: "port = 10000 + 1000·P + 100·W + R. Subtract the base and read: 13204 is project 3, worktree 2, smtp; 31010 is project 21, worktree 0, role 10. No allocation table to remember."
   - title: Truth, not guesses
     details: lsof, netstat, Docker compose labels and the Claude session marker in a process's environment attribute every listener, including containers behind Colima or Docker Desktop.
   - title: Built for agent sessions
