@@ -277,7 +277,7 @@ export async function doctorChecks(): Promise<DoctorCheck[]> {
     checks.push({
       name: 'policy',
       ok: false,
-      detail: `missing: ${policyPath()} (copy examples/policy.example.toml)`,
+      detail: `missing: ${policyPath()} (run \`berth init\`)`,
     });
   }
   try {
@@ -380,7 +380,7 @@ export async function doctorChecks(): Promise<DoctorCheck[]> {
     warn: !rules,
     detail: rules
       ? `Ports section present in ${contractHome(claudeMd)}`
-      : 'no Ports section in ~/.claude/CLAUDE.md (see examples/CLAUDE.ports.md)',
+      : 'no Ports section in ~/.claude/CLAUDE.md (see https://amiable-dev.github.io/berth/guide/claude-code)',
   });
   checks.push({ name: 'sessions', ok: true, detail: `${readSessions().length} recorded` });
   checks.push({ name: 'version', ok: true, detail: VERSION });

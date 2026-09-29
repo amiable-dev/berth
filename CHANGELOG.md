@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- First run after `npm install -g` no longer points at a file the package does not contain. `berth check`, `berth doctor` and the SessionStart context text named `examples/policy.example.toml`, which ships only in the git repository, and none of them named `berth init` — the command that writes the policy and needs no files at all. All three now say `berth init`, and `doctor`'s Claude rules row links the documentation site rather than `examples/CLAUDE.ports.md`. A test asserts no file under `src/` cites a repository path again (#37).
+
 ## [0.1.7] - 2026-09-29
 
 **Readability fix.** One rule for the map, stated in the code: a cell prints the part of its port that its position does not already imply.
