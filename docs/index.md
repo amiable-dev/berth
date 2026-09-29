@@ -27,8 +27,8 @@ features:
 
 <div class="vp-doc" style="max-width: 1152px; margin: 32px auto 0; padding: 0 24px;">
 
-<img class="dark-only" src="./images/port-rule-dark.png" alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp">
-<img class="light-only" src="./images/port-rule-light.png" alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp">
+<img class="dark-only" src="./images/port-rule-dark.png" alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp. Once P reaches 10 the digits stop lining up, so subtract the base first: 31010 − 10000 = 21010, project 21, worktree 0, role 10.">
+<img class="light-only" src="./images/port-rule-light.png" alt="Port 13204 decoded: base 10000, P=3 breach-resolve, W=2 second worktree, R=04 smtp. Once P reaches 10 the digits stop lining up, so subtract the base first: 31010 − 10000 = 21010, project 21, worktree 0, role 10.">
 
 ## Sixty seconds
 

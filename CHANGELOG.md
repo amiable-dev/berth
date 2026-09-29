@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation: the landing page's infographic alt text describes the second panel it gained in 0.1.9, instead of stopping at the one-digit example (#42).
+
 ## [0.1.9] - 2026-09-29
 
 **Two-digit projects.** What the twenty-second project taught: the scheme was right, the way it was explained was not, and the one bound that failed silently now speaks.
