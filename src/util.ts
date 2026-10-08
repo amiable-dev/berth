@@ -94,6 +94,11 @@ export function expandHome(p: string): string {
   return p;
 }
 
+/** Quotes a value for a POSIX shell when it contains anything beyond a safe path charset. */
+export function shellQuote(v: string): string {
+  return /^[A-Za-z0-9_./:-]+$/.test(v) ? v : `'${v.replace(/'/g, `'\\''`)}'`;
+}
+
 export function contractHome(p: string): string {
   const home = os.homedir();
   if (p === home) return '~';
@@ -255,6 +260,7 @@ const ANSI: Record<string, string> = {
   ok: `${ESC}[32m`,
   idle: `${ESC}[2m`,
   stale: `${ESC}[33m`,
+  overstay: `${ESC}[32;2m`,
   orphan: `${ESC}[33m`,
   unmanaged: `${ESC}[36m`,
   squatter: `${ESC}[31m`,

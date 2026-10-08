@@ -65,7 +65,7 @@ describe('map cell label styling', () => {
     expect(num).toContain('color: var(--bg)');
     // an unoccupied extra still names its slot, but quietly
     expect(num).toContain('.cell.num:not(.has)');
-    for (const state of ['stale', 'orphan', 'squatter', 'conflict']) {
+    for (const state of ['stale', 'overstay', 'orphan', 'squatter', 'conflict']) {
       expect(num, state).toContain(`.cell.num.s-${state}`);
     }
     expect(css).not.toContain('.cell.lg.s-');

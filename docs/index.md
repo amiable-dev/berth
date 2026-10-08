@@ -22,7 +22,7 @@ features:
   - title: Built for agent sessions
     details: A Claude Code plugin injects each session's ports at start, puts berth on its PATH, exposes MCP tools and ships skills. Commands with teeth are fenced off from agents.
   - title: A map you can read
-    details: One row per project, live legacy ports as numbered cells, eight states with an advisory each, and a drawer that shows the evidence for any port.
+    details: One row per project, live legacy ports as numbered cells, nine states with an advisory each, and a drawer that shows the evidence for any port.
 ---
 
 <div class="vp-doc" style="max-width: 1152px; margin: 32px auto 0; padding: 0 24px;">

@@ -9,7 +9,7 @@
  * with createElement/textContent; server data is never parsed as HTML.
  */
 
-/** @typedef {'ok'|'idle'|'stale'|'orphan'|'unmanaged'|'squatter'|'conflict'|'drift'} State */
+/** @typedef {'ok'|'idle'|'stale'|'overstay'|'orphan'|'unmanaged'|'squatter'|'conflict'|'drift'} State */
 /** @typedef {'block'|'dynamic'|'declared'|'shared'} Kind */
 /** @typedef {'sessions'|'table'|'map'|'rules'|'term'} View */
 
@@ -114,6 +114,7 @@ const STATES = Object.freeze([
   'ok',
   'idle',
   'stale',
+  'overstay',
   'orphan',
   'unmanaged',
   'squatter',
@@ -122,7 +123,7 @@ const STATES = Object.freeze([
 ]);
 /** Severity order, worst first. */
 const SEVERITY = [...STATES].reverse();
-const HATCHED = new Set(['squatter', 'stale', 'conflict', 'orphan']);
+const HATCHED = new Set(['squatter', 'stale', 'overstay', 'conflict', 'orphan']);
 /** @type {readonly View[]} */
 const VIEWS = Object.freeze(['sessions', 'table', 'map', 'rules', 'term']);
 /** Advisory copy per state (exact, from the handoff); used when the server omits `advisory`. */
@@ -133,6 +134,10 @@ const ADVICE = {
   stale: {
     text: 'Owner pid is gone. Suggest release; berth never auto-kills.',
     command: 'berth release --port {p}',
+  },
+  overstay: {
+    text: 'Dynamic lease is past its TTL but its holder is still bound: a scratch port in permanent use. Give it a permanent home; berth never auto-kills.',
+    command: 'berth who {p}',
   },
   orphan: {
     text: 'Lease cwd no longer exists. Suggest release; tombstone keeps the worktree ID.',

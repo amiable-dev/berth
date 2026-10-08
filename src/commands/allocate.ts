@@ -31,7 +31,15 @@ import { buildReport } from '../report.js';
 import { currentSession } from '../session.js';
 import { type ContainerInspect, handRunContainerAt, inspectContainer, snapshot } from '../truth.js';
 import type { Container, Lease, LeaseKind, PortRecord } from '../types.js';
-import { atomicWriteSync, hostUser, nowIso, parsePort, pidAlive, sleep } from '../util.js';
+import {
+  atomicWriteSync,
+  hostUser,
+  nowIso,
+  parsePort,
+  pidAlive,
+  shellQuote,
+  sleep,
+} from '../util.js';
 import type { IO } from './query.js';
 
 export function envName(role: string): string {
@@ -105,10 +113,6 @@ export function envLines(
   format: 'shell' | 'dotenv' | 'unset',
 ): string[] {
   return formatPairs(ctx.project ? projectEnvPairs(policy, ctx) : sharedEnvPairs(policy), format);
-}
-
-function shellQuote(v: string): string {
-  return /^[A-Za-z0-9_./:-]+$/.test(v) ? v : `'${v.replace(/'/g, `'\\''`)}'`;
 }
 
 async function contextOrFail(

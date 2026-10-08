@@ -53,7 +53,7 @@ and appends the role-port exports, `BERTH_*` variables and the plugin's `bin/` d
 
 **Skills teach.** Two skills load on demand:
 
-- `berth-ports` triggers before a dev server, database or Compose stack is started, on "address already in use", or when asked which port a service uses. It walks the agent through `berth env`, the strict-port flag per framework, `berth claim`, `berth who`, and the eight states.
+- `berth-ports` triggers before a dev server, database or Compose stack is started, on "address already in use", or when asked which port a service uses. It walks the agent through `berth env`, the strict-port flag per framework, `berth claim`, `berth who`, and the nine states.
 - `berth-onboard` triggers on "register this repo in berth" and similar. It runs `berth doctor`, `berth init` when there is no policy, `berth project add .`, then `env`, the Compose override and `launch-json --write`, and reports the block and ports.
 
 **MCP executes.** The plugin registers `berth mcp`, a stdio server with six tools: `berth_check`, `berth_who`, `berth_ls`, `berth_claim`, `berth_release`, `berth_env`. Clients that prefer tools to a shell use these; for Claude Code, which has Bash, the CLI's `--json` output is the primary interface.

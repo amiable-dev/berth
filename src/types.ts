@@ -2,6 +2,7 @@ export type State =
   | 'ok'
   | 'idle'
   | 'stale'
+  | 'overstay'
   | 'orphan'
   | 'unmanaged'
   | 'squatter'
@@ -12,6 +13,7 @@ export const STATES: State[] = [
   'ok',
   'idle',
   'stale',
+  'overstay',
   'orphan',
   'unmanaged',
   'squatter',
@@ -26,6 +28,7 @@ export const SEVERITY: State[] = [
   'squatter',
   'unmanaged',
   'orphan',
+  'overstay',
   'stale',
   'idle',
   'ok',
