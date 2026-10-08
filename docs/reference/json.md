@@ -18,6 +18,9 @@ interface CheckReport {
   summary: { ports: number; attention: number; liveSessions: number; byState: Record<State, number>; ignored?: number };
 }
 
+// The dashboard's GET /api/state is a CheckReport plus:
+//   runtime: { installed?: string }  // set when a newer berth is installed than the one serving the page
+
 interface PortRecord {
   port: number;
   state: State;

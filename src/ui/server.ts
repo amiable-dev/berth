@@ -1,7 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildReport } from '../report.js';
 import type { CheckReport } from '../types.js';
+import { VERSION } from '../version.js';
+import { newerInstalled } from './installed.js';
 import { PAGE_HTML } from './page.generated.js';
 
 export interface UiServer {
@@ -45,14 +49,40 @@ function sameOrigin(req: http.IncomingMessage): boolean {
   return true;
 }
 
-/** Serve the dashboard on 127.0.0.1 only. GET-only, no file system access, nonce-based CSP. */
+/** How long a "newer berth installed" answer is reused: a couple of package.json reads a minute. */
+const INSTALLED_TTL_MS = 60_000;
+
+/**
+ * The default upgrade check: only a bundled berth (dist/berth.js) knows where it was installed
+ * from; a source run (tests, tsx) has no install to compare against.
+ */
+function defaultInstalledFn(): () => string | undefined {
+  const self = fileURLToPath(import.meta.url);
+  if (path.basename(self) !== 'berth.js') return () => undefined;
+  let last: { at: number; value: string | undefined } | undefined;
+  return () => {
+    if (!last || Date.now() - last.at > INSTALLED_TTL_MS)
+      last = { at: Date.now(), value: newerInstalled(VERSION, self) };
+    return last.value;
+  };
+}
+
+/**
+ * Serve the dashboard on 127.0.0.1 only. GET-only, nothing served from disk (the page is inlined
+ * in the bundle), nonce-based CSP. `/api/state` is the check report plus `runtime.installed` when
+ * a newer berth is installed than the one serving it, so a dashboard left running across an
+ * upgrade says so.
+ */
 export async function startUi(opts: {
   port: number;
   host?: string;
   reportFn?: () => Promise<CheckReport>;
+  /** Test seam: the newer installed version, or undefined. */
+  installedFn?: () => string | undefined;
 }): Promise<UiServer> {
   const host = opts.host ?? '127.0.0.1';
   const reportFn = opts.reportFn ?? (() => buildReport({ maxAgeMs: 1000 }));
+  const installedFn = opts.installedFn ?? defaultInstalledFn();
   let inflight: Promise<CheckReport> | undefined;
   let last: { at: number; report: CheckReport } | undefined;
   const getReport = () => {
@@ -102,7 +132,9 @@ export async function startUi(opts: {
         });
       try {
         const report = await getReport();
-        return send(200, JSON.stringify(report), {
+        const installed = installedFn();
+        const runtime = installed ? { installed } : {};
+        return send(200, JSON.stringify({ ...report, runtime }), {
           'Content-Type': 'application/json; charset=utf-8',
         });
       } catch (e) {

@@ -11,7 +11,7 @@ berth gives every project a permanent block of ports and records who holds what.
 
 ## Before you bind anything
 
-1. If the session started with a "## Ports (berth)" section, the numbers are already in the environment: `PORT`, `WEB_PORT`, `API_PORT`, `DB_PORT`, `CACHE_PORT`, `SMTP_PORT`, `MAIL_UI_PORT`, `DOCS_PORT`, `WORKER_PORT`, `OTLP_GRPC_PORT`, `OTLP_HTTP_PORT`, plus `BERTH_BLOCK`. Otherwise run:
+1. If the session started with a "## Ports (berth <version>)" section, the numbers are already in the environment: `PORT`, `WEB_PORT`, `API_PORT`, `DB_PORT`, `CACHE_PORT`, `SMTP_PORT`, `MAIL_UI_PORT`, `DOCS_PORT`, `WORKER_PORT`, `OTLP_GRPC_PORT`, `OTLP_HTTP_PORT`, plus `BERTH_BLOCK`. Otherwise run:
    ```bash
    eval "$(berth env --shell)"
    ```

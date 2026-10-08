@@ -186,7 +186,7 @@ export async function cmdWho(args: ParsedArgs, io: IO): Promise<number> {
 export function renderCheck(report: CheckReport): string {
   const s = report.summary;
   const lines = [
-    `${s.ports} ports · ${s.attention} need attention · ${s.liveSessions} live session${s.liveSessions === 1 ? '' : 's'}`,
+    `berth ${report.version} · ${s.ports} ports · ${s.attention} need attention · ${s.liveSessions} live session${s.liveSessions === 1 ? '' : 's'}`,
     `  ${Object.entries(s.byState)
       .filter(([, n]) => n > 0)
       .map(([k, n]) => `${colourState(k)} ${n}`)

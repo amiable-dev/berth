@@ -379,6 +379,8 @@ describe("check's attention summary points at tidy", () => {
       now: NOW,
     });
     const lines = renderCheck(r).trimEnd().split('\n');
+    // the summary line carries the version that produced the report, for pasted output
+    expect(lines[0]).toMatch(/^berth test · \d+ ports · /);
     expect(lines.at(-2)).toBe('  run: berth tidy --project alpha');
     expect(lines.at(-1)).toBe('  run: berth tidy --project beta');
   });

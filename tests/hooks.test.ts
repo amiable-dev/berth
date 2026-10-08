@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/args.js';
 import { cmdContext, cmdSessionEnd, pluginPathExports } from '../src/commands/hooks.js';
 import { readSession } from '../src/ledger.js';
+import { VERSION } from '../src/version.js';
 import { fixturePolicy, useTempState, writePolicy } from './helpers.js';
 
 function capture() {
@@ -35,7 +36,7 @@ describe('hooks', () => {
       hookSpecificOutput: { additionalContext: string };
     };
     const text = payload.hookSpecificOutput.additionalContext;
-    expect(text).toContain('## Ports (berth)');
+    expect(text).toContain(`## Ports (berth ${VERSION})`);
     expect(text).toContain('no W slot yet');
     // read-only against allocation state: no ledger, no claims, no worktree slot assigned
     expect(existsSync(path.join(state, 'leases.json'))).toBe(false);
