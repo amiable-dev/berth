@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A ninth port state, `overstay`: a dynamic lease past its TTL whose claiming process is gone while its server is still bound. It was reported as `ok`, so `berth check` showed nothing to attend to while a scratch port was being used as a permanent one. It counts toward "need attention", suggests a permanent home (`berth project add <dir>`, or `berth claim --extra` inside a registered project), is listed but never released by `tidy`, and shows on the map as a hatched `ok` cell. A lease whose claiming pid is alive stays `ok` whatever the TTL says (ADR-003 §6); a session resumed under a new pid does not count. See ADR-010.
+- A ninth port state, `overstay`: a dynamic lease past its TTL whose claiming process is gone while its server is still bound. It was reported as `ok`, so `berth check` showed nothing to attend to while a scratch port was being used as a permanent one. It counts toward "need attention", suggests a permanent home (`berth project add <dir>`, or `berth claim --extra` inside a registered project), is listed but never released by `tidy` (a new `overstay` array in `tidy --json`), and shows on the map as a hatched `ok` cell. The JSON change is additive (a new `state` value and `summary.byState.overstay`); a consumer that matches `state` exhaustively needs the new value. A lease whose claiming pid is alive stays `ok` whatever the TTL says (ADR-003 §6); a session resumed under a new pid does not count. See ADR-010.
 
 ### Changed
 

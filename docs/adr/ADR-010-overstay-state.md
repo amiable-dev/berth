@@ -1,6 +1,6 @@
 # ADR-010: An `overstay` State for Dynamic Leases Held Past Their TTL
 
-**Status:** Proposed 2026-10-08
+**Status:** Accepted 2026-10-08
 **Date:** 2026-10-08
 **Decision Makers:** Chris (@amiable-dev)
 **Related:** ADR-001 (advisory, never kills), ADR-002 (the decodable port scheme and the dynamic pool), ADR-003 §6 (liveness beats wall-clock), ADR-004 (truth sources and attribution)
@@ -102,6 +102,18 @@ matches the lease.
   Consumers that switch on `state` without a default need the new value.
   Already-published material that says "eight states" (the announcement post
   on amiable.dev) needs a one-line follow-up.
+- The JSON change is additive: a new value of `state`, a new
+  `summary.byState.overstay` count, and a new `overstay` array in
+  `berth tidy --json`. Nothing is removed or renamed, so this is not a
+  breaking change under GOVERNANCE.md; a consumer that matches `state`
+  exhaustively still needs the new value.
+- ADR-003 §6's "one TTL of grace after a reconcile gap" was never implemented,
+  and it still needs no code. Before this ADR no state depended on the clock
+  alone: an unbound lease whose owner is dead is `stale` whether or not it has
+  expired. `overstay` needs both the clock and a dead claiming pid, and the
+  pid is what protects a sleeping laptop; a claiming process that really died
+  while its server kept running is exactly the case to report, however long
+  the gap since the last check.
 - There is still no way to extend a dynamic lease. The suggestions avoid
   needing one: both lead to a permanent home instead of a longer lease. A
   `--renew` flag can be its own decision if scratch servers that run for
