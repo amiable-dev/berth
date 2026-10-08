@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-10-08
+
+**Past the TTL.** A scratch port that outlived the process that claimed it no longer reads as `ok`.
+
 ### Added
 
 - A ninth port state, `overstay`: a dynamic lease past its TTL whose claiming process is gone while its server is still bound. It was reported as `ok`, so `berth check` showed nothing to attend to while a scratch port was being used as a permanent one. It counts toward "need attention", suggests a permanent home (`berth project add <dir>`, or `berth claim --extra` inside a registered project), is listed but never released by `tidy` (a new `overstay` array in `tidy --json`), and shows on the map as a hatched `ok` cell. The JSON change is additive (a new `state` value and `summary.byState.overstay`); a consumer that matches `state` exhaustively needs the new value. A lease whose claiming pid is alive stays `ok` whatever the TTL says (ADR-003 §6); a session resumed under a new pid does not count. See ADR-010.
@@ -170,7 +174,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/amiable-dev/berth/compare/v0.1.9...v0.1.10
+[0.1.9]: https://github.com/amiable-dev/berth/compare/v0.1.8...v0.1.9
+[0.1.8]: https://github.com/amiable-dev/berth/compare/v0.1.7...v0.1.8
+[0.1.7]: https://github.com/amiable-dev/berth/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/amiable-dev/berth/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/amiable-dev/berth/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/amiable-dev/berth/compare/v0.1.3...v0.1.4
