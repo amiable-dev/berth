@@ -82,6 +82,13 @@ describe('version label', () => {
     expect(boundLabel('10000', '0.1.10')).toBe('ui :10000 · v0.1.10');
   });
 
+  it('says when a newer berth is installed than the one running', async () => {
+    const { boundLabel } = await app();
+    expect(boundLabel('10000', '0.1.10', '0.1.11')).toBe(
+      'ui :10000 · v0.1.10 · 0.1.11 installed, restart berth ui',
+    );
+  });
+
   it('shows the port alone until a report has arrived', async () => {
     const { boundLabel } = await app();
     expect(boundLabel('10000', undefined)).toBe('ui :10000');

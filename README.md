@@ -199,7 +199,7 @@ Environment: `BERTH_POLICY`, `BERTH_CONFIG_DIR`, `BERTH_STATE_DIR`, `NO_COLOR`, 
 
 - No daemon. Reads never lock; each session writes its own claim file; the single lock guards compaction and explicit writes, records the holder's pid start time, and is only broken when that pid is provably gone.
 - No shell. Every external command runs through `execFile` with an argument array and a timeout. Only three Claude marker variables are read from process environments; nothing else is retained.
-- The dashboard binds 127.0.0.1, serves GET only, never touches the file system, and uses a per-response nonce CSP with `frame-ancestors 'none'`. Cross-site requests to `/api/state` are refused.
+- The dashboard binds 127.0.0.1, serves GET only, serves nothing from disk (the page is inlined in the bundle), and uses a per-response nonce CSP with `frame-ancestors 'none'`. Cross-site requests to `/api/state` are refused.
 - `free` signals only pids you own, never containers or VM proxies, and refuses ports held by another live session unless you force it.
 - State lives in `~/.local/state/berth` as 0600 files in a 0700 directory. The package has no runtime dependencies and is published with npm provenance.
 

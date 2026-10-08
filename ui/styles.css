@@ -235,6 +235,9 @@ button {
   color: var(--dim);
   font-size: 11px;
 }
+.bound.upgrade {
+  color: var(--stale);
+}
 .fixture-tag {
   font-size: 9px;
   letter-spacing: 0.06em;

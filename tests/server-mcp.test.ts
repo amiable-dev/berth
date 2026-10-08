@@ -61,6 +61,30 @@ describe('ui server', () => {
   });
 });
 
+describe('ui server runtime', () => {
+  it('adds runtime.installed to /api/state only when a newer berth is installed', async () => {
+    const newer = await startUi({
+      port: 0,
+      reportFn: async () => report,
+      installedFn: () => '9.9.9',
+    });
+    const same = await startUi({
+      port: 0,
+      reportFn: async () => report,
+      installedFn: () => undefined,
+    });
+    try {
+      const a = (await (await fetch(`${newer.url}api/state`)).json()) as { runtime?: unknown };
+      expect(a.runtime).toEqual({ installed: '9.9.9' });
+      const b = (await (await fetch(`${same.url}api/state`)).json()) as { runtime?: unknown };
+      expect(b.runtime).toEqual({});
+    } finally {
+      await newer.close();
+      await same.close();
+    }
+  });
+});
+
 describe('mcp', () => {
   it('handles initialize, tools/list and validates tool input', async () => {
     const init = await handleMessage({

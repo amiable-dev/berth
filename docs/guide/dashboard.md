@@ -5,7 +5,7 @@ berth ui                     # http://127.0.0.1:10000
 berth ui --port 10000 --open # same, and open the browser (macOS)
 ```
 
-The dashboard is one page served by berth itself. berth is project 0 in the scheme, so its own port is 10000, and it leases that port while it runs. It binds `127.0.0.1` only, serves GET requests only, never touches the file system, and sends a per-response nonce content-security policy. It polls `berth check --json` every five seconds against a one-second cache; a poll that returns an unchanged report does not re-render, so focus and hover survive.
+The dashboard is one page served by berth itself. berth is project 0 in the scheme, so its own port is 10000, and it leases that port while it runs. It binds `127.0.0.1` only, serves GET requests only, serves nothing from disk (the page is inlined in the bundle), and sends a per-response nonce content-security policy. The header names the berth version serving it; if a newer berth has since been installed (an in-place npm upgrade, or a newer plugin version beside this one in the plugin cache) it says `0.1.12 installed, restart berth ui`. It polls `berth check --json` every five seconds against a one-second cache; a poll that returns an unchanged report does not re-render, so focus and hover survive.
 
 <img class="dark-only" src="../images/dashboard-map-dark.png" alt="berth ui map view">
 <img class="light-only" src="../images/dashboard-map-light.png" alt="berth ui map view">

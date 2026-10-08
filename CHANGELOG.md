@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - berth names its version where people read its output: the dashboard header (`ui :10000 · v0.1.11`), the first line of `berth check` (`berth 0.1.11 · 33 ports · …`), and the session-start block (`## Ports (berth 0.1.11)`). A dashboard or session left running across an upgrade now shows the version it is actually running. Machine-read output (`env`, `--json`, which already carried `version`) is unchanged.
+- The dashboard notices when a newer berth is installed than the one serving it, whether npm replaced it in place or a newer Claude Code plugin version sits beside it in the plugin cache, and the header says `0.1.12 installed, restart berth ui`. `/api/state` carries it as `runtime.installed`; the check reads berth's own package.json files, at most once a minute.
 
 ## [0.1.10] - 2026-10-08
 

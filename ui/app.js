@@ -97,6 +97,7 @@
 /**
  * @typedef {object} CheckReport
  * @property {string} version
+ * @property {{installed?: string}} [runtime] set by the dashboard server: a newer berth installed than this one
  * @property {string} generatedAt
  * @property {number} cacheAgeMs
  * @property {{platform: string, user: string, dockerAvailable: boolean, colima: boolean}} host
@@ -757,7 +758,10 @@ function tick() {
 // header, filters
 
 function renderHeaderStatus() {
-  byId('bound').textContent = boundLabel(location.port || '10000', data?.version);
+  const bound = byId('bound');
+  const installed = data?.runtime?.installed;
+  bound.textContent = boundLabel(location.port || '10000', data?.version, installed);
+  bound.classList.toggle('upgrade', Boolean(installed));
   const ago = byId('ago');
   const dot = byId('dot');
   const secs = ui.lastCheckedAt
@@ -1229,13 +1233,17 @@ function renderTable() {
 
 /**
  * The header's bound label: the port this dashboard serves on and, once a report has arrived,
- * the berth version that produced it (a dashboard left running across an upgrade shows the old one).
+ * the berth version that produced it; when the server reports a newer berth installed than the
+ * one running, it says so and how to pick it up.
  * @param {string} port
  * @param {string | undefined} version
+ * @param {string} [installed]
  * @returns {string}
  */
-export function boundLabel(port, version) {
-  return version ? `ui :${port} · v${version}` : `ui :${port}`;
+export function boundLabel(port, version, installed) {
+  if (!version) return `ui :${port}`;
+  const base = `ui :${port} · v${version}`;
+  return installed ? `${base} · ${installed} installed, restart berth ui` : base;
 }
 
 /**
