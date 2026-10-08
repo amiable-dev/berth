@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-10-08
+
+**Which berth is this?** Every surface people read now says, and a dashboard left running across an upgrade asks to be restarted.
+
 ### Added
 
 - berth names its version where people read its output: the dashboard header (`ui :10000 · v0.1.11`), the first line of `berth check` (`berth 0.1.11 · 33 ports · …`), and the session-start block (`## Ports (berth 0.1.11)`). A dashboard or session left running across an upgrade now shows the version it is actually running. Machine-read output (`env`, `--json`, which already carried `version`) is unchanged.
@@ -179,7 +183,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State files are created 0600 in a 0700 directory; hook commands use absolute interpreter and script paths.
 - Zero runtime dependencies; the single bundle is built with esbuild and published with npm provenance.
 
-[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/amiable-dev/berth/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/amiable-dev/berth/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/amiable-dev/berth/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/amiable-dev/berth/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/amiable-dev/berth/compare/v0.1.7...v0.1.8
