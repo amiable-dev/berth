@@ -102,7 +102,7 @@ berth check                        # "30 ports · 0 need attention · 2 live ses
 berth ls                           # Project → Worktree → Role table
 ```
 
-Each port gets one of eight states and, when it needs attention, the one command that fixes it (release a stale lease, adopt a server you started by hand, look at a conflict). `check` always exits 0.
+Each port gets one of nine states and, when it needs attention, the one command that fixes it (release a stale lease, adopt a server you started by hand, look at a conflict). `check` always exits 0.
 
 **A scratch server or a new worktree.**
 
@@ -142,13 +142,14 @@ Nothing common defaults into that range; the few well-known ports that do (11211
 | `ok` | leased and bound by the expected owner, or a shared service | none |
 | `idle` | leased or declared, nothing bound, owner alive | shown dimmed |
 | `stale` | leased, nothing bound, owner pid gone | `berth release --port N`; never auto-killed |
+| `overstay` | dynamic lease past its TTL, claiming process gone, holder still bound: a scratch port in permanent use | `berth project add <dir>` (or `berth claim --extra` inside a registered project); never killed |
 | `orphan` | lease cwd no longer exists (worktree removed) | release; the tombstone keeps the slot |
 | `unmanaged` | bound inside a managed range with no lease | `berth adopt N --owner human` |
 | `squatter` | bound inside another project's block by a different project or session | `berth who N`; do not kill |
 | `conflict` | lease owner differs from the live holder | `berth who N --json`; the owning session's belief is wrong |
 | `drift` | config declares a port outside its allocation, or a shared stack is partially up | `berth scan --write`; never reassigned |
 
-Truth comes from four read-only sources, none of which need sudo: `lsof` for your listeners and their working directories, `netstat` for other users' listeners, `docker ps` compose labels to attribute container ports (the Colima or Docker Desktop proxy process is never treated as the owner), and `ps -E` to read the `CLAUDE_CODE_SESSION_ID` marker from a listener's environment, which attributes a server to the session that started it even when nobody claimed anything. Liveness beats the clock: a lease whose pid is alive and whose port is bound stays `ok` whatever its TTL says.
+Truth comes from four read-only sources, none of which need sudo: `lsof` for your listeners and their working directories, `netstat` for other users' listeners, `docker ps` compose labels to attribute container ports (the Colima or Docker Desktop proxy process is never treated as the owner), and `ps -E` to read the `CLAUDE_CODE_SESSION_ID` marker from a listener's environment, which attributes a server to the session that started it even when nobody claimed anything. Liveness beats the clock: a lease whose pid is alive and whose port is bound stays `ok` whatever its TTL says; once a dynamic lease's claiming process is gone and its TTL has passed, a server still bound on it is `overstay`.
 
 ## Claude Code integration
 

@@ -1,7 +1,9 @@
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ADVISORY, liveByPort, reconcile } from '../src/reconcile.js';
 import type { Lease, SessionFile, TruthSnapshot } from '../src/types.js';
+import { SEVERITY, STATES } from '../src/types.js';
 import { fixturePolicy, tempDir } from './helpers.js';
 
 const root = tempDir();
@@ -372,5 +374,119 @@ describe('attribution: an in-block listener attributed to the block project is o
     );
     const p = r.ports.find((x) => x.port === 13001);
     expect(p).toMatchObject({ state: 'ok', attribution: 'lease' });
+  });
+});
+
+describe('overstay (ADR-010)', () => {
+  const scratchCwd = path.join(root, 'tax-calc');
+  mkdirSync(scratchCwd, { recursive: true });
+  const EXPIRED = '2026-09-13T08:00:00Z'; // four hours before NOW
+  const FUTURE = '2026-09-13T16:00:00Z';
+  function dyn(over: Partial<Lease> = {}): Lease {
+    return lease(40002, {
+      project: 'scratch',
+      role: 'dynamic',
+      kind: 'dynamic',
+      owner: { session_id: 'sess-tax-1', tool: 'claude-code', pid: 999999 },
+      cwd: scratchCwd,
+      expires: EXPIRED,
+      ...over,
+    });
+  }
+  const holder = (over: Record<string, unknown> = {}) =>
+    truth({
+      listeners: [
+        {
+          port: 40002,
+          addr: '127.0.0.1:40002',
+          pid: 69237,
+          cmd: 'python3',
+          cwd: scratchCwd,
+          sessionId: 'sess-tax-1',
+          source: 'lsof',
+          ...over,
+        },
+      ],
+    });
+
+  it('an expired scratch lease still bound by its holder is overstay, suggesting project add', () => {
+    const rec = run([dyn()], holder()).ports.find((x) => x.port === 40002);
+    expect(rec).toMatchObject({ state: 'overstay', kind: 'dynamic' });
+    expect(rec?.advisory?.command).toBe(`berth project add ${scratchCwd}`);
+    expect(rec?.evidence?.join('\n')).toMatch(/lease expired 2026-09-13T08:00:00Z/);
+  });
+
+  it('in a registered project, overstay suggests a named extra in its own block', () => {
+    const rec = run(
+      [dyn({ project: 'alpha', cwd: paths.alpha })],
+      holder({ cwd: paths.alpha }),
+    ).ports.find((x) => x.port === 40002);
+    expect(rec).toMatchObject({ state: 'overstay', project: 'alpha' });
+    expect(rec?.advisory?.command).toBe('berth claim --extra <name>');
+  });
+
+  it('stays ok while the owner is alive, whatever the TTL says (ADR-003 §6)', () => {
+    const alive = dyn({
+      owner: { session_id: 'sess-tax-1', tool: 'claude-code', pid: process.pid },
+    });
+    expect(run([alive], holder()).ports.find((x) => x.port === 40002)?.state).toBe('ok');
+  });
+
+  it('a live session does not keep it ok once the claiming pid is gone (resumed sessions)', () => {
+    // The 40002 case: claiming pid dead, the same session resumed later under a new pid.
+    const resumed: SessionFile[] = [
+      {
+        id: 'sess-tax-1',
+        tool: 'claude-code',
+        pid: process.pid,
+        started: '2026-09-13T09:00:00Z',
+        ended: null,
+        cwd: scratchCwd,
+      },
+    ];
+    const rec = run([dyn()], holder(), resumed).ports.find((x) => x.port === 40002);
+    expect(rec?.state).toBe('overstay');
+  });
+
+  it('counts toward need-attention', () => {
+    expect(run([dyn()], holder()).summary.attention).toBe(1);
+  });
+
+  it('is ok before expiry, stale when expired and unbound, conflict for a different holder', () => {
+    const ok = run([dyn({ expires: FUTURE })], holder()).ports.find((x) => x.port === 40002);
+    expect(ok?.state).toBe('ok');
+    const stale = run([dyn()], truth()).ports.find((x) => x.port === 40002);
+    expect(stale?.state).toBe('stale');
+    const other = run([dyn()], holder({ sessionId: 'sess-other-2' })).ports.find(
+      (x) => x.port === 40002,
+    );
+    expect(other?.state).toBe('conflict');
+  });
+
+  it('never applies to block leases, which have no TTL', () => {
+    const rec = run(
+      [lease(13001, { expires: EXPIRED })],
+      truth({
+        listeners: [
+          {
+            port: 13001,
+            addr: '*:13001',
+            pid: 5,
+            cmd: 'node',
+            cwd: paths.alpha,
+            sessionId: 'sess-alpha-1',
+            source: 'lsof',
+          },
+        ],
+      }),
+    ).ports.find((x) => x.port === 13001);
+    expect(rec?.state).toBe('ok');
+  });
+
+  it('has an advisory entry and a severity between orphan and stale', () => {
+    expect(ADVISORY.overstay.text).toMatch(/TTL/);
+    expect(SEVERITY.indexOf('overstay')).toBeGreaterThan(SEVERITY.indexOf('orphan'));
+    expect(SEVERITY.indexOf('overstay')).toBeLessThan(SEVERITY.indexOf('stale'));
+    expect(STATES).toContain('overstay');
   });
 });

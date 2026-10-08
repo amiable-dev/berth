@@ -70,6 +70,30 @@ describe('buildTidyPlan', () => {
     expect(orphanRow).toMatchObject({ state: 'orphan', command: 'berth release --port 13002' });
   });
 
+  it('lists overstay ports (ADR-010) for a decision and never releases them', () => {
+    const t = truth({
+      listeners: [
+        {
+          port: 40002,
+          addr: '127.0.0.1:40002',
+          pid: 7,
+          cmd: 'python3',
+          cwd: paths.alpha,
+          sessionId: 'sess-alpha-1',
+          source: 'lsof',
+        },
+      ],
+    });
+    const expired = lease(40002, {
+      role: 'dynamic',
+      kind: 'dynamic',
+      expires: '2026-09-15T08:00:00Z',
+    });
+    const plan = buildTidyPlan(report([expired], t));
+    expect(plan.release).toEqual([]);
+    expect(plan.overstay).toMatchObject([{ port: 40002, state: 'overstay' }]);
+  });
+
   it('lists unmanaged ports as a suggestion only, never as something to release', () => {
     // no cwd: the holder cannot be attributed to alpha by evidence, so it stays unmanaged
     // (an attributed holder inside its own block's project is `ok`, not unmanaged).
@@ -135,6 +159,7 @@ describe('applyTidyPlan', () => {
     const plan: TidyPlan = {
       release: [{ port: 13001, project: 'alpha', state: 'stale', owner: 'human-other' }],
       unmanaged: [],
+      overstay: [],
     };
 
     // the caller running tidy ("agent-session-1") is not the lease owner ("human-other")
@@ -177,6 +202,7 @@ describe('applyTidyPlan', () => {
           command: 'berth adopt 13006 --owner human',
         },
       ],
+      overstay: [],
     };
     const result = await applyTidyPlan(plan, 'agent-session-1');
     expect(result.released).toEqual([13001]); // only the release row was acted on

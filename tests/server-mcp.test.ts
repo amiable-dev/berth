@@ -25,6 +25,7 @@ const report: CheckReport = {
       ok: 0,
       idle: 0,
       stale: 0,
+      overstay: 0,
       orphan: 0,
       unmanaged: 0,
       squatter: 0,

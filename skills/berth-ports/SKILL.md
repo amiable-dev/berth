@@ -39,6 +39,7 @@ It prints the lease, the live holder (process, container or session), the eviden
 |---|---|---|
 | `ok` | expected owner is bound | use a different role port; this one is taken legitimately |
 | `idle` / `stale` | leased, nothing bound | `berth release --port N` only if the lease is yours; otherwise report it (or show the plan below) |
+| `overstay` | scratch lease past its TTL, claiming process gone, server still up | not yours: report it with the advisory command; never kill it |
 | `orphan` | lease cwd is gone | report it; show the plan below for a human to apply |
 | `unmanaged` | bound, no lease, in a managed range | if you started it, `berth adopt N --owner session`; otherwise report |
 | `squatter` / `conflict` | someone else is in this block | report the holder; do not kill |

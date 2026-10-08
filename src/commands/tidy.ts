@@ -28,6 +28,8 @@ export interface TidyPlan {
   release: TidyRow[];
   /** unmanaged ports: listed with the adopt suggestion only, never acted on. */
   unmanaged: TidyRow[];
+  /** overstay ports (ADR-010): bound past their TTL; listed for a decision, never released. */
+  overstay: TidyRow[];
 }
 
 function toRow(r: PortRecord): TidyRow {
@@ -46,8 +48,10 @@ function toRow(r: PortRecord): TidyRow {
 /**
  * The tidy plan from a fresh `check`: leases in state `stale` or `orphan` (any owner) that tidy
  * will release when applied, and `unmanaged` ports that it can only ever suggest adopting
- * (adoption needs a decision about the owner, so it never becomes an action). Live leases (`ok`,
- * `idle`, `conflict`, `drift`) and `squatter` listeners are never part of the plan.
+ * (adoption needs a decision about the owner, so it never becomes an action), and `overstay`
+ * ports that are listed the same way (still bound, so releasing would only orphan the holder).
+ * Live leases (`ok`, `idle`, `conflict`, `drift`) and `squatter` listeners are never part of the
+ * plan.
  */
 export function buildTidyPlan(report: CheckReport, project?: string): TidyPlan {
   const inScope = (r: PortRecord) => project === undefined || r.project === project;
@@ -56,6 +60,7 @@ export function buildTidyPlan(report: CheckReport, project?: string): TidyPlan {
       .filter((r) => (r.state === 'stale' || r.state === 'orphan') && inScope(r))
       .map(toRow),
     unmanaged: report.ports.filter((r) => r.state === 'unmanaged' && inScope(r)).map(toRow),
+    overstay: report.ports.filter((r) => r.state === 'overstay' && inScope(r)).map(toRow),
   };
 }
 
@@ -111,7 +116,8 @@ export function renderTidyPlan(
   opts: { applied: boolean },
 ): string {
   const label = scopeLabel(project);
-  if (plan.release.length === 0 && plan.unmanaged.length === 0) return `nothing to tidy (${label})`;
+  if (plan.release.length === 0 && plan.unmanaged.length === 0 && plan.overstay.length === 0)
+    return `nothing to tidy (${label})`;
   const lines: string[] = [];
   if (plan.release.length > 0) {
     lines.push(opts.applied ? `released (${label})` : `release (${label})`);
@@ -124,6 +130,12 @@ export function renderTidyPlan(
       `unmanaged (${label}) — listed only; adopting needs a human decision about the owner`,
     );
     for (const r of plan.unmanaged) lines.push(renderRow(r, true));
+  }
+  if (plan.overstay.length > 0) {
+    lines.push(
+      `overstay (${label}) — listed only; past the pool TTL but still bound, so it needs a permanent home`,
+    );
+    for (const r of plan.overstay) lines.push(renderRow(r, true));
   }
   return lines.join('\n');
 }

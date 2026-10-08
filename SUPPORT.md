@@ -15,7 +15,7 @@ Start with the documentation:
 ## First Things to Try
 
 - `berth --help` and `berth <command> --help`.
-- `berth check` reconciles the ledger against what is actually listening and prints one of eight states per port, each with a suggestion. It always exits 0.
+- `berth check` reconciles the ledger against what is actually listening and prints one of nine states per port, each with a suggestion. It always exits 0.
 - `berth who <port>` shows the lease, the live holder, and how berth knows.
 - **A Docker port is attributed to the wrong project?** Containers started with `docker run` carry no compose labels and are attributed by container name only; compose-launched containers are attributed by their `working_dir` label. See `docs/DESIGN.md` §5.4 and §5.11.
 - **The SessionStart hook does nothing?** Hook environments do not see nvm or mise shims. The hook command must use an absolute interpreter path (`/opt/homebrew/bin/node …`).

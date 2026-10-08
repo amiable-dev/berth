@@ -5,7 +5,7 @@
 ## The report
 
 ```ts
-type State = 'ok' | 'idle' | 'stale' | 'orphan' | 'unmanaged' | 'squatter' | 'conflict' | 'drift';
+type State = 'ok' | 'idle' | 'stale' | 'overstay' | 'orphan' | 'unmanaged' | 'squatter' | 'conflict' | 'drift';
 
 interface CheckReport {
   version: string;               // berth version

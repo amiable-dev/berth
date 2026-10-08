@@ -29,7 +29,7 @@ import type {
   TruthSnapshot,
 } from './types.js';
 import { SEVERITY, STATES } from './types.js';
-import { contractHome, hostUser, humanAge, nowIso, pidAlive, shortId } from './util.js';
+import { contractHome, hostUser, humanAge, nowIso, pidAlive, shellQuote, shortId } from './util.js';
 
 export const ADVISORY: Record<State, { text: string; command?: (port: number) => string }> = {
   ok: { text: 'none' },
@@ -37,6 +37,10 @@ export const ADVISORY: Record<State, { text: string; command?: (port: number) =>
   stale: {
     text: 'Owner pid is gone. Suggest release; berth never auto-kills.',
     command: (p) => `berth release --port ${p}`,
+  },
+  overstay: {
+    text: 'Dynamic lease is past its TTL but its holder is still bound: a scratch port in permanent use. Give it a permanent home; berth never auto-kills.',
+    command: (p) => `berth who ${p}`,
   },
   orphan: {
     text: 'Lease cwd no longer exists. Suggest release; tombstone keeps the worktree ID.',
@@ -70,6 +74,23 @@ const UNLABELLED_CONTAINER_ADVISORY: { text: string; command?: (port: number) =>
   text: 'Started outside Compose, so berth cannot attribute it; start it through docker-compose (it then carries the project label) or berth adopt <port> --owner human.',
   command: ADVISORY.unmanaged.command,
 };
+
+/**
+ * ADR-010: an overstaying scratch server needs a permanent home, not a longer lease. Outside a
+ * registered project that is a block of its own; inside one, a named extra in that block.
+ */
+function overstayAdvisory(lease: Lease): { text: string; command: (port: number) => string } {
+  if (lease.project === 'scratch') {
+    return {
+      text: `${ADVISORY.overstay.text} ${contractHome(lease.cwd)} is not a registered project: register it for a permanent block.`,
+      command: () => `berth project add ${shellQuote(lease.cwd)}`,
+    };
+  }
+  return {
+    text: `${ADVISORY.overstay.text} Move it onto a named extra in ${lease.project}'s block.`,
+    command: () => 'berth claim --extra <name>',
+  };
+}
 
 const MACOS_DAEMONS = new Set([
   'ControlCenter',
@@ -185,6 +206,15 @@ function ownerAlive(l: Lease, sessions: SessionFile[]): boolean {
     if (s) return !s.ended && pidAlive(s.pid);
   }
   return false;
+}
+
+/**
+ * ADR-010: for a dynamic lease, liveness is the claiming process (ADR-003 §6 says "a lease whose
+ * pid is alive"). A session resumed later under a new pid does not keep a scratch lease alive.
+ * A lease that recorded no pid falls back to the session check.
+ */
+function claimingPidAlive(l: Lease, sessions: SessionFile[]): boolean {
+  return l.owner.pid ? pidAlive(l.owner.pid) : ownerAlive(l, sessions);
 }
 
 function liveMatchesLease(live: Live, lease: Lease, policy: Policy): boolean {
@@ -317,7 +347,24 @@ export function reconcile(input: ReconcileInput): CheckReport {
       } else if (dropped.has(port)) {
         state = 'conflict';
       } else if (lv) {
-        state = liveMatchesLease(lv, lease, policy) ? 'ok' : 'conflict';
+        if (!liveMatchesLease(lv, lease, policy)) {
+          state = 'conflict';
+        } else if (
+          lease.kind === 'dynamic' &&
+          lease.expires &&
+          Date.parse(lease.expires) < now &&
+          !claimingPidAlive(lease, sessions)
+        ) {
+          // ADR-010: past the pool's TTL with the claiming process gone. A live claimant keeps it
+          // ok whatever the TTL says (ADR-003 §6), so a sleeping laptop never wakes to overstays.
+          state = 'overstay';
+          evidence.push(
+            `lease expired ${lease.expires}; claiming pid ${lease.owner.pid ?? '?'} gone; holder still bound`,
+          );
+          advisoryOverride = overstayAdvisory(lease);
+        } else {
+          state = 'ok';
+        }
       } else if (!existsSync(lease.cwd)) {
         state = 'orphan';
       } else if (lease.expires && Date.parse(lease.expires) < now && !ownerAlive(lease, sessions)) {

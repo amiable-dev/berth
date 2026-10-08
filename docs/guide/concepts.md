@@ -48,15 +48,16 @@ The ledger is what sessions believe. The reconciler compares it with what is act
 - `docker ps` compose labels, which attribute a container's published ports to its repository. Colima and Docker Desktop publish container ports through a proxy process (`ssh`, `limactl`, `com.docker.backend`); that process is never treated as the owner,
 - `ps -E`, which reads the `CLAUDE_CODE_SESSION_ID` marker from a listener's environment and attributes a server to the Claude session that started it, even when nobody claimed anything.
 
-Liveness beats the clock: a lease whose pid is alive and whose port is bound stays `ok` whatever its TTL says.
+Liveness beats the clock: a lease whose pid is alive and whose port is bound stays `ok` whatever its TTL says. Once a dynamic lease's claiming process is gone and the TTL has passed, a server still bound on it is `overstay` (ADR-010).
 
-## The eight states
+## The nine states
 
 | State | Meaning | Advisory |
 |---|---|---|
 | `ok` | leased and bound by the expected owner, a shared service, or a holder already attributed to the block's own project | none |
 | `idle` | leased or declared, nothing bound, owner alive | shown dimmed |
 | `stale` | leased, nothing bound, owner pid gone | `berth release --port N`; never auto-killed |
+| `overstay` | dynamic lease past its TTL, claiming process gone, holder still bound: a scratch port in permanent use | `berth project add <dir>` (or `berth claim --extra` inside a registered project); never killed |
 | `orphan` | lease directory no longer exists (worktree removed) | release; the tombstone keeps the slot |
 | `unmanaged` | bound inside a managed range with no lease and no attribution | `berth adopt N --owner human` |
 | `squatter` | bound inside another project's block by a different project or session | `berth who N`; do not kill |

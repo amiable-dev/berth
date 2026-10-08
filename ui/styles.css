@@ -25,6 +25,7 @@ body {
   --ok: #3fd68b;
   --idle: #b08d3c;
   --stale: #f2b135;
+  --overstay: var(--ok);
   --orphan: #e0812a;
   --unmanaged: #9aa5b1;
   --squatter: #ff6b5d;
@@ -45,6 +46,7 @@ body[data-theme="light"] {
   --ok: #137a42;
   --idle: #8a6a15;
   --stale: #a56d00;
+  --overstay: var(--ok);
   --orphan: #b25a0f;
   --unmanaged: #5d6772;
   --squatter: #c9352a;
@@ -110,6 +112,9 @@ button {
 .c-stale {
   color: var(--stale);
 }
+.c-overstay {
+  color: var(--overstay);
+}
 .c-orphan {
   color: var(--orphan);
 }
@@ -143,6 +148,9 @@ button {
 .bg-stale {
   background: var(--stale);
 }
+.bg-overstay {
+  background: var(--overstay);
+}
 .bg-orphan {
   background: var(--orphan);
 }
@@ -166,6 +174,9 @@ button {
 }
 .h-stale {
   background: repeating-linear-gradient(135deg, var(--stale) 0 2px, transparent 2px 5px);
+}
+.h-overstay {
+  background: repeating-linear-gradient(135deg, var(--overstay) 0 2px, transparent 2px 5px);
 }
 .h-orphan {
   background: repeating-linear-gradient(135deg, var(--orphan) 0 2px, transparent 2px 5px);
@@ -408,6 +419,9 @@ button {
 }
 .chip.on.c-stale {
   border-color: var(--stale);
+}
+.chip.on.c-overstay {
+  border-color: var(--overstay);
 }
 .chip.on.c-orphan {
   border-color: var(--orphan);
@@ -846,6 +860,7 @@ tr.idle {
   color: var(--faint);
 }
 .cell.num.s-stale,
+.cell.num.s-overstay,
 .cell.num.s-orphan,
 .cell.num.s-squatter,
 .cell.num.s-conflict {
@@ -880,6 +895,10 @@ tr.idle {
   background: repeating-linear-gradient(135deg, var(--stale) 0 2px, transparent 2px 5px);
   border-color: var(--stale);
 }
+.cell.s-overstay {
+  background: repeating-linear-gradient(135deg, var(--overstay) 0 2px, transparent 2px 5px);
+  border-color: var(--overstay);
+}
 .cell.s-orphan {
   background: repeating-linear-gradient(135deg, var(--orphan) 0 2px, transparent 2px 5px);
   border-color: var(--orphan);
@@ -900,6 +919,9 @@ tr.idle {
 }
 .tick.s-stale {
   background: var(--stale);
+}
+.tick.s-overstay {
+  background: var(--overstay);
 }
 .tick.s-orphan {
   background: var(--orphan);
