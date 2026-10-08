@@ -98,7 +98,7 @@ berth who 5432
 **Is anything wrong?**
 
 ```bash
-berth check                        # "30 ports · 0 need attention · 2 live sessions", then the attention list
+berth check                        # "berth 0.1.11 · 30 ports · 0 need attention · 2 live sessions", then the attention list
 berth ls                           # Project → Worktree → Role table
 ```
 

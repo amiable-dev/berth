@@ -110,7 +110,7 @@ berth check
 ```
 
 ```
-33 ports · 1 need attention · 2 live sessions
+berth 0.1.11 · 33 ports · 1 need attention · 2 live sessions
   ok 19 · idle 13 · unmanaged 1
 
   3002  unmanaged  36-inch-platform      node pid 57886                  berth adopt 3002 --owner human

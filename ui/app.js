@@ -757,6 +757,7 @@ function tick() {
 // header, filters
 
 function renderHeaderStatus() {
+  byId('bound').textContent = boundLabel(location.port || '10000', data?.version);
   const ago = byId('ago');
   const dot = byId('dot');
   const secs = ui.lastCheckedAt
@@ -1224,6 +1225,17 @@ function renderTable() {
   if (!groups.length)
     wrap.appendChild(el('div', { class: 'empty' }, 'No leases match the current filters.'));
   return wrap;
+}
+
+/**
+ * The header's bound label: the port this dashboard serves on and, once a report has arrived,
+ * the berth version that produced it (a dashboard left running across an upgrade shows the old one).
+ * @param {string} port
+ * @param {string | undefined} version
+ * @returns {string}
+ */
+export function boundLabel(port, version) {
+  return version ? `ui :${port} · v${version}` : `ui :${port}`;
 }
 
 /**
@@ -1963,7 +1975,7 @@ function boot() {
   else applyTheme(loadTheme());
   const qView = params.get('view');
   if (qView && VIEWS.includes(/** @type {View} */ (qView))) ui.view = /** @type {View} */ (qView);
-  byId('bound').textContent = `ui :${location.port || '10000'}`;
+  byId('bound').textContent = boundLabel(location.port || '10000', undefined);
   const search = /** @type {HTMLInputElement} */ (byId('search'));
   search.addEventListener('input', () => {
     ui.query = search.value;

@@ -75,3 +75,15 @@ describe('map cell label styling', () => {
     expect(css.slice(css.indexOf('.cell.x {'))).toMatch(/^\.cell\.x \{\s*width: 22px;/);
   });
 });
+
+describe('version label', () => {
+  it('names the running berth next to the bound port', async () => {
+    const { boundLabel } = await app();
+    expect(boundLabel('10000', '0.1.10')).toBe('ui :10000 · v0.1.10');
+  });
+
+  it('shows the port alone until a report has arrived', async () => {
+    const { boundLabel } = await app();
+    expect(boundLabel('10000', undefined)).toBe('ui :10000');
+  });
+});

@@ -8,6 +8,11 @@ import { blockRange, loadPolicy, type Policy, policyExists, worktreeRange } from
 import { buildReportFromCache } from '../report.js';
 import type { SessionFile } from '../types.js';
 import { atomicWriteSync, nowIso, shortId } from '../util.js';
+import { VERSION } from '../version.js';
+
+/** The block header names the plugin version, so a session knows which berth it is talking to. */
+const HEADER = `## Ports (berth ${VERSION})`;
+
 import { envLines, rolePorts } from './allocate.js';
 import type { IO } from './query.js';
 
@@ -80,7 +85,7 @@ export async function buildContextText(
     assign: false,
     gitTimeoutMs: opts.gitTimeoutMs ?? 120,
   });
-  const lines: string[] = ['## Ports (berth)'];
+  const lines: string[] = [HEADER];
   const exports: string[] = [];
   if (!ctx.project) {
     lines.push(
@@ -145,7 +150,7 @@ export async function buildContextText(
 function fallbackContext(policy: Policy | undefined, why: string): string {
   const shared = policy ? sharedLines(policy) : [];
   return [
-    '## Ports (berth)',
+    HEADER,
     `berth: ${why}. Run \`berth env --shell\` for this project's ports and \`berth doctor\` if that fails.`,
     ...shared,
     RULES,
@@ -190,7 +195,8 @@ export async function cmdContext(args: ParsedArgs, io: IO): Promise<number> {
     const cwd = input.cwd ?? flagString(args.flags, 'cwd') ?? process.cwd();
     if (!policyExists()) {
       emit(
-        '## Ports (berth)\nberth is installed but has no policy yet: run `berth init`, then `berth project add .` in this repository. Until then pass ports explicitly and check `lsof -nP -iTCP:<port> -sTCP:LISTEN` before binding.',
+        `${HEADER}\n` +
+          'berth is installed but has no policy yet: run `berth init`, then `berth project add .` in this repository. Until then pass ports explicitly and check `lsof -nP -iTCP:<port> -sTCP:LISTEN` before binding.',
       );
       return 0;
     }

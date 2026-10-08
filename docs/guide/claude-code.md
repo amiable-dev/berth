@@ -36,10 +36,10 @@ anything else this machine keeps clear.
 
 ## What a session gets
 
-**Hooks inform.** At session start (startup, resume, clear, compact) the plugin runs `berth context`. It is read-only against allocation state, races a hard 180 ms deadline and always exits 0. It injects a "Ports (berth)" section scoped to this project:
+**Hooks inform.** At session start (startup, resume, clear, compact) the plugin runs `berth context`. It is read-only against allocation state, races a hard 180 ms deadline and always exits 0. It injects a "Ports (berth)" section, headed with the plugin's version, scoped to this project:
 
 ```
-## Ports (berth)
+## Ports (berth 0.1.11)
 Project cith-watch (P=4) owns 14000–14999. This checkout is W0 (main) → 14000–14099.
 Ports: web 14000 · api 14001 · db 14002 · cache 14003 · smtp 14004 · mail-ui 14005 · docs 14006 · worker 14007 · otlp-grpc 14008 · otlp-http 14009.
 Exported for this session: PORT (web) and WEB_PORT, API_PORT, DB_PORT, …; BERTH_BLOCK=14000-14099.

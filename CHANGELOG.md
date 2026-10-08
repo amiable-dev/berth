@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- berth names its version where people read its output: the dashboard header (`ui :10000 · v0.1.11`), the first line of `berth check` (`berth 0.1.11 · 33 ports · …`), and the session-start block (`## Ports (berth 0.1.11)`). A dashboard or session left running across an upgrade now shows the version it is actually running. Machine-read output (`env`, `--json`, which already carried `version`) is unchanged.
+
 ## [0.1.10] - 2026-10-08
 
 **Past the TTL.** A scratch port that outlived the process that claimed it no longer reads as `ok`.
