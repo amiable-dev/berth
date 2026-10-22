@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation: the dashboard map screenshots are retaken against 0.1.11. They dated from 13 September and showed eight states, unlabelled extras cells and no version in the header, so the landing page and the dashboard guide were illustrating nine states with a picture of eight (#63).
+
 ## [0.1.11] - 2026-10-08
 
 **Which berth is this?** Every surface people read now says, and a dashboard left running across an upgrade asks to be restarted.
