@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -185,6 +185,23 @@ describe('shell-init', () => {
     const text = c.out.join('\n');
     expect(text).toContain('--on-variable PWD');
     expect(text).toContain('berth env --shell --cwd');
+  });
+
+  // A global npm install belongs to whichever runtime was active when it ran, so under mise, nvm,
+  // asdf or fnm a project that pins a different version loses `berth` from PATH entirely — and the
+  // hook fires on the very `cd` that switched it. An rc file must degrade to doing nothing.
+  it('guards every snippet on berth being resolvable, before any other work', async () => {
+    for (const shell of ['zsh', 'bash', 'fish']) {
+      const c = capture();
+      expect(await cmdShellInit(parseArgs(['shell-init', shell]), c.io)).toBe(0);
+      const text = c.out.join('\n');
+      const guard = shell === 'fish' ? 'command -q berth; or return 0' : 'command -v berth';
+      expect(text, shell).toContain(guard);
+      const hook = text.slice(text.indexOf('_berth_chpwd'));
+      expect(hook.indexOf(guard), `${shell}: guard must precede the root walk`).toBeLessThan(
+        hook.indexOf('_berth_find_root'),
+      );
+    }
   });
 });
 
@@ -461,5 +478,59 @@ describe.skipIf(!hasShell('bash'))('bash shell-init snippet (requires bash on PA
     const file = path.join(dir, 'init.bash');
     writeFileSync(file, c.out.join('\n'));
     expect(() => execFileSync('bash', ['-n', file], { stdio: 'pipe' })).not.toThrow();
+  });
+});
+
+describe('a shell whose PATH has no berth at all', () => {
+  /** The shell's own absolute path: the child's PATH is empty, so it cannot be looked up there. */
+  function shellPath(shell: string): string {
+    return execFileSync('command', ['-v', shell], { shell: '/bin/sh', encoding: 'utf8' }).trim();
+  }
+
+  /** A git repo to cd into, and an empty bin dir to use as the whole PATH. */
+  function scaffold(prefix: string): { base: string; project: string; bin: string } {
+    const base = tempDir(prefix);
+    const project = path.join(base, 'repo');
+    const bin = path.join(base, 'bin');
+    mkdirSync(path.join(project, '.git'), { recursive: true });
+    mkdirSync(bin, { recursive: true });
+    return { base, project, bin };
+  }
+
+  it.skipIf(!hasShell('zsh'))('zsh: cd into a repo is silent and exits 0', async () => {
+    const { base, project, bin } = scaffold('berth-zsh-noberth-');
+    const c = capture();
+    await cmdShellInit(parseArgs(['shell-init', 'zsh']), c.io);
+    const snippet = path.join(base, 'init.zsh');
+    writeFileSync(snippet, c.out.join('\n'));
+    const driver = path.join(base, 'driver.zsh');
+    writeFileSync(driver, ['source "$1"', 'cd "$2"'].join('\n'));
+    const r = spawnSync(shellPath('zsh'), ['-f', driver, snippet, project], {
+      cwd: base,
+      env: { PATH: bin },
+      encoding: 'utf8',
+    });
+    expect(r.stderr).toBe('');
+    expect(r.stdout).toBe('');
+    expect(r.status).toBe(0);
+  });
+
+  it.skipIf(!hasShell('bash'))('bash: the hook is silent and exits 0', async () => {
+    const { base, project, bin } = scaffold('berth-bash-noberth-');
+    const c = capture();
+    await cmdShellInit(parseArgs(['shell-init', 'bash']), c.io);
+    const snippet = path.join(base, 'init.bash');
+    writeFileSync(snippet, c.out.join('\n'));
+    const driver = path.join(base, 'driver.bash');
+    // bash has no chpwd, and PROMPT_COMMAND never fires non-interactively: drive it directly.
+    writeFileSync(driver, ['source "$1"', 'cd "$2"', '_berth_chpwd'].join('\n'));
+    const r = spawnSync(shellPath('bash'), ['--noprofile', '--norc', driver, snippet, project], {
+      cwd: base,
+      env: { PATH: bin },
+      encoding: 'utf8',
+    });
+    expect(r.stderr).toBe('');
+    expect(r.stdout).toBe('');
+    expect(r.status).toBe(0);
   });
 });

@@ -44,6 +44,12 @@ berth check                             # what is listening, who holds it, what 
 eval "$(berth shell-init zsh)"          # once, in ~/.zshrc (or bash, fish): cd-aware port exports
 ```
 
+If you use a Node version manager (mise, nvm, asdf, fnm), install berth so it does not belong to one runtime. A global npm install lives under whichever Node was active when you ran it, so any project pinning a different version loses `berth` from `PATH` — and the `cd` hook fires on the very `cd` that switched it. With mise:
+
+```bash
+mise use -g "npm:@amiable-dev/berth@latest"   # on PATH whatever Node is in force
+```
+
 `berth project add` is additive and idempotent: it appends one `[projects.<name>]` table, records the ports your repo already hardcodes as `declared`, and names Compose services that aren't one of the ten roles as `extras`. Project numbers are permanent from that moment; `berth project list` shows them. `berth doctor` checks lsof, Docker, the policy and the Claude Code wiring (plugin or manual hooks).
 
 **Who does what**
