@@ -12,6 +12,12 @@ const NOTE =
  * (`berth env --shell --cwd <new root>`, quiet if it is not a registered project). This way a
  * root-to-root move (one project straight into another, or into an unregistered git repo) never
  * leaves the old project's variables behind. Runs once at source time for the initial cwd.
+ *
+ * Returns immediately when `berth` is not resolvable. A global npm install belongs to whichever
+ * runtime was active when it ran, so under a version manager a project pinning a different one
+ * loses the binary — and this hook fires on the very `cd` that switched it. Silently, because the
+ * hook runs on every directory change; `berth doctor` is where an absent binary is reported. It
+ * returns 0, not the failed lookup's 1, so a prompt that renders `$?` shows no error after a cd.
  */
 function zshSnippet(): string {
   return `# berth shell-init (zsh) — cd-aware port exports.
@@ -34,6 +40,7 @@ _berth_find_root() {
 }
 
 _berth_chpwd() {
+  command -v berth >/dev/null 2>&1 || return 0
   _berth_find_root
   local root="$_berth_root"
   [[ "$root" == "$_berth_last_root" ]] && return
@@ -85,6 +92,7 @@ _berth_find_root() {
 }
 
 _berth_chpwd() {
+  command -v berth >/dev/null 2>&1 || return 0
   _berth_find_root
   local root="$_berth_root"
   if [[ "$root" == "$_berth_last_root" ]]; then
@@ -152,6 +160,7 @@ function _berth_unset_line -a line
 end
 
 function _berth_chpwd --on-variable PWD
+    command -q berth; or return 0
     _berth_find_root
     set -l root $_berth_root
     if test "$root" = "$_berth_last_root"

@@ -18,6 +18,17 @@ claude plugin install berth@berth
 
 :::
 
+::: tip Using a Node version manager?
+A global npm install belongs to whichever Node was active when you ran it, so a project pinning a
+different version loses `berth` from `PATH` — and the `cd` hook added below fires on the very `cd`
+that switched it. The hook stays silent when that happens, but the exports stop. Install berth
+independently of the active runtime instead; with mise:
+
+```bash
+mise use -g "npm:@amiable-dev/berth@latest"
+```
+:::
+
 The plugin carries the CLI, so an agent session needs nothing else: the SessionStart hook puts `berth` on the session's PATH, injects the project's ports, and registers the MCP tools and skills. The global install is for your own terminal.
 
 ## Create the policy

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `berth shell-init` now guards its hook on `berth` being resolvable, in all three shells, and returns 0 when it is not. A global npm install belongs to whichever runtime was active when it ran, so under mise, nvm, asdf or fnm a project pinning a different Node loses the binary — and the hook fires on the very `cd` that switched it, printing `command not found` on every directory change. That was the opposite of what #21 set out to do. The rc file now degrades to doing nothing, silently, since the hook runs on every `cd` and `berth doctor` is where an absent binary belongs; returning 0 rather than the failed lookup's 1 keeps a `$?`-rendering prompt clean. The README and Getting started name a runtime-independent install for version-manager users (#67).
+
 ### Changed
 
 - Documentation: the dashboard map screenshots are retaken against 0.1.11. They dated from 13 September and showed eight states, unlabelled extras cells and no version in the header, so the landing page and the dashboard guide were illustrating nine states with a picture of eight (#63).
